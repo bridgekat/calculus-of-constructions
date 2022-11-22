@@ -40,20 +40,10 @@ instance : has_to_string expr := ⟨expr.show⟩
 instance : has_repr expr := ⟨expr.show⟩
 
 /-- Contexts (precontexts) -/
-@[derive decidable_eq]
-inductive ctx : Type
-| nil  :              ctx
-| cons : expr → ctx → ctx
-open ctx
+def ctx : Type := list expr
 
-notation `⟦`:max t:max `⟧`:max ` :: `:max Γ:max := cons t Γ
-
-def ctx.show : ctx → string
-| nil        := "ctx.nil\n"
-| (cons t Γ) := "⟦" ++ t.show ++ "⟧ ::\n" ++ ctx.show Γ 
-
-instance : has_to_string ctx := ⟨ctx.show⟩
-instance : has_repr ctx := ⟨ctx.show⟩
+instance : has_to_string ctx := ⟨list.to_string⟩
+instance : has_repr ctx := ⟨list.to_string⟩
 
 end
 end coc
