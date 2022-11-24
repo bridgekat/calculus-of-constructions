@@ -12,6 +12,7 @@ def imax : nat → nat → nat
 | _ 0 := 0
 | a b := max a b
 
+/-- Size measure for strong structural induction. -/
 def expr.size : expr → nat
 | (sort s)   := 1
 | (var v)    := 1
@@ -19,34 +20,45 @@ def expr.size : expr → nat
 | (lam t e)  := (t.size + e.size).succ
 | (pi t₁ t₂) := (t₁.size + t₂.size).succ
 
-def expr.closed : expr → nat → Prop
-| (sort s)        n := true
-| (var (bound b)) n := b < n
-| (var (free f))  n := true
-| (app l r)       n := expr.closed l n ∧ expr.closed r n
-| (lam t e)       n := expr.closed t n ∧ expr.closed e n.succ
-| (pi t₁ t₂)      n := expr.closed t₁ n ∧ expr.closed t₂ n.succ
+/-- Three-way comparison operator. -/
+inductive threeway (m n : nat) : Prop
+| lt : m < n → threeway
+| eq : m = n → threeway
+| gt : n < m → threeway
 
-structure cexpr (n : nat) : Type :=
-  (e : expr) (hce : expr.closed e n)
-
-/-- Make a free variable into an "overflowed" bound variable. -/
 @[irreducible]
-def expr.bind : expr → nat → nat → expr
-| (sort s)   n f := sort s
-| (var v)    n f := if v = free f then var (bound n) else var v
-| (app l r)  n f := app (expr.bind l n f) (expr.bind r n f)
-| (lam t e)  n f := lam (expr.bind t n f) (expr.bind e n.succ f)
-| (pi t₁ t₂) n f := pi (expr.bind t₁ n f) (expr.bind t₂ n.succ f)
+def threeway_cmp (m n : nat) : threeway m n :=
+  dite (m < n) threeway.lt
+    (dite (m = n) (λ h _, threeway.eq h)
+      (λ h₁ h₂, threeway.gt
+        (nat.lt_of_le_and_ne (le_of_not_lt h₂)
+          (λ h : n = m, (h₁ h.symm)))))
 
-/-- Replace one overflow variable by an expression. -/
+/-- Lift overflow variables by `m` levels. -/
+@[irreducible]
+def expr.gap : expr → nat → nat → expr
+| (sort s)        n m := sort s
+| (var (bound b)) n m :=
+  if n <= b then var (bound (b + m))
+  else var (bound b)
+| (var (free f))  n m := var (free f)
+| (app l r)       n m := app (expr.gap l n m) (expr.gap r n m)
+| (lam t e)       n m := lam (expr.gap t n m) (expr.gap e n.succ m)
+| (pi t₁ t₂)      n m := pi (expr.gap t₁ n m) (expr.gap t₂ n.succ m)
+
+/-- Replace one overflow variable by an expression
+    (when deleting the outermost layer of binder). -/
 @[irreducible]
 def expr.subs : expr → nat → expr → expr
-| (sort s)   n e' := sort s
-| (var v)    n e' := if v = bound n then e' else var v
-| (app l r)  n e' := app (expr.subs l n e') (expr.subs r n e')
-| (lam t e)  n e' := lam (expr.subs t n e') (expr.subs e n.succ e')
-| (pi t₁ t₂) n e' := pi (expr.subs t₁ n e') (expr.subs t₂ n.succ e')
+| (sort s)        n e' := sort s
+| (var (bound b)) n e' :=
+  if n < b then var (bound b.pred)
+  else if n = b then e'.gap 0 n
+  else (var (bound b))
+| (var (free f))  n e' := var (free f)
+| (app l r)       n e' := app (expr.subs l n e') (expr.subs r n e')
+| (lam t e)       n e' := lam (expr.subs t n e') (expr.subs e n.succ e')
+| (pi t₁ t₂)      n e' := pi (expr.subs t₁ n e') (expr.subs t₂ n.succ e')
 
 /-- Small-step reduction rules. -/
 inductive small : expr → expr → Prop
