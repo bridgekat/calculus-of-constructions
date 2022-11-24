@@ -288,89 +288,127 @@ open expr
 /-- The "one-step reduction" relation `red1 e₁ e₂`: "`e₁` reduces to `e₂` by contracting zero or more immediate redexes."
     See: https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf -/
 inductive red1 : expr → expr → Prop
-| r1_beta {t e e' r r'}   : red1 e e' → red1 r r' →     red1 (app (lam t e) r) (e'⟦0 ↦ r'⟧)
-| r1_sort {s}             :                             red1 (sort s) (sort s)
-| r1_var  {v}             :                             red1 (var v) (var v)
-| r1_app  {l l' r r'}     : red1 l l' → red1 r r' →     red1 (app l r) (app l' r')
-| r1_lam  {t t' e e'}     : red1 t t' → red1 e e' →     red1 (lam t e) (lam t' e')
-| r1_pi   {t₁ t₁' t₂ t₂'} : red1 t₁ t₁' → red1 t₂ t₂' → red1 (pi t₁ t₂) (pi t₁' t₂')
+| red1_beta {t e e' r r'}   : red1 e e' → red1 r r' →     red1 (app (lam t e) r) (e'⟦0 ↦ r'⟧)
+| red1_sort {s}             :                             red1 (sort s) (sort s)
+| red1_var  {v}             :                             red1 (var v) (var v)
+| red1_app  {l l' r r'}     : red1 l l' → red1 r r' →     red1 (app l r) (app l' r')
+| red1_lam  {t t' e e'}     : red1 t t' → red1 e e' →     red1 (lam t e) (lam t' e')
+| red1_pi   {t₁ t₁' t₂ t₂'} : red1 t₁ t₁' → red1 t₂ t₂' → red1 (pi t₁ t₂) (pi t₁' t₂')
 open red1
 
 local notation e ` ~>₁ ` e' := red1 e e'
 
-lemma red1.refl {e : expr} : e ~>₁ e :=
+lemma red1_refl {e} : e ~>₁ e :=
   @expr.rec_on (λ e, e ~>₁ e) e
-    (λ _, r1_sort) (λ _, r1_var) (λ _ _, r1_app) (λ _ _, r1_lam) (λ _ _, r1_pi)
+    (λ _, red1_sort) (λ _, red1_var) (λ _ _, red1_app) (λ _ _, red1_lam) (λ _ _, red1_pi)
 
-lemma red1.red1_gap_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦k ↟ n⟧ := by
+lemma red1_gap_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦k ↟ n⟧ := by
 { -- Strong induction on `e` generalising `e' k h`.
   revert_after e, apply size_wf.induction e, intros e ih,
   cases e,
-  case sort : s { intros, cases h, unfold gap, exact red1.refl },
-  case var : v { intros, cases h, cases v; split_ifs <|> skip; exact red1.refl },
+  case sort : s { intros, cases h, unfold gap, exact red1_refl },
+  case var : v { intros, cases h, cases v; split_ifs <|> skip; exact red1_refl },
   case app : l r
   { intros,
     cases h,
-    case r1_beta : t e e' r r' he hr
+    case red1_beta : t e e' r r' he hr
     { unfold gap, rw ← gap_subs_below,
-      refine r1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
+      refine red1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_lam_e, size_lt_size_app_r] },
-    case r1_app : l l' r r' hl hr
-    { unfold gap, refine r1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
+    case red1_app : l l' r r' hl hr
+    { unfold gap, refine red1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_l, size_lt_size_app_r] } },
   case lam : t e
   { intros, cases h, unfold gap,
-    refine r1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
+    refine red1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
     exacts [size_lt_size_lam_l, size_lt_size_lam_r] },
   case pi : t₁ t₂
   { intros, cases h, unfold gap,
-    refine r1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
+    refine red1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
     exacts [size_lt_size_pi_l, size_lt_size_pi_r] } }
 
-lemma red1.red1_gap (n) {e e'} (h : e ~>₁ e') : e ⟦0 ↟ n⟧ ~>₁ e' ⟦0 ↟ n⟧ :=
-  red1.red1_gap_ind n e e' 0 h
+lemma red1_gap (n) {e e'} (h : e ~>₁ e') : e ⟦0 ↟ n⟧ ~>₁ e' ⟦0 ↟ n⟧ :=
+  red1_gap_ind n e e' 0 h
 
-lemma red1.red1_subs_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l ⟦k ↦ r⟧ ~>₁ l' ⟦k ↦ r'⟧ := by
+lemma red1_subs_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l ⟦k ↦ r⟧ ~>₁ l' ⟦k ↦ r'⟧ := by
 { revert_all, intros l₀ l₀' hl₀ r₀ r₀' hr₀ k,
   -- Strong induction on `l₀` generalising `l₀' hl₀ r₀ r₀' hr₀ k`.
   revert_after l₀, apply size_wf.induction l₀, intros l₀ ih,
   cases l₀,
-  case sort : s { intros, cases hl₀, unfold subs, exact r1_sort },
+  case sort : s { intros, cases hl₀, unfold subs, exact red1_sort },
   case var : v
-  { intros, cases v; cases hl₀; unfold subs, swap, apply r1_var,
-    split_ifs; exact red1.refl <|> skip,
-    exact red1.red1_gap k hr₀ },
+  { intros, cases v; cases hl₀; unfold subs, swap, apply red1_var,
+    split_ifs; exact red1_refl <|> skip,
+    exact red1_gap k hr₀ },
   case app : l r
   { intros,
     cases hl₀,
-    case r1_beta : t e e' r r' he hr
+    case red1_beta : t e e' r r' he hr
     { unfold subs, rw subs_subs,
-      refine r1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
+      refine red1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_lam_e, size_lt_size_app_r] },
-    case r1_app : l l' r r' hl hr
+    case red1_app : l l' r r' hl hr
     { unfold subs,
-      refine r1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
+      refine red1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_l, size_lt_size_app_r] } },
   case lam : t e
   { intros, cases hl₀, unfold subs,
-    refine r1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
+    refine red1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
     exacts [size_lt_size_lam_l, size_lt_size_lam_r] },
   case pi : t₁ t₂
   { intros, cases hl₀, unfold subs,
-    refine r1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
+    refine red1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
     exacts [size_lt_size_pi_l, size_lt_size_pi_r] } }
 
-lemma red1.confluent {a b c : expr} (hb : a ~>₁ b) (hc : a ~>₁ c) :
+lemma red1_subs {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') : l ⟦0 ↦ r⟧ ~>₁ l' ⟦0 ↦ r'⟧ :=
+  red1_subs_ind hl hr 0
+
+lemma red1_confluent {a b c} (hb : a ~>₁ b) (hc : a ~>₁ c) :
   ∃ d, (b ~>₁ d) ∧ (c ~>₁ d) := by
 { -- Strong induction on `a` generalising `b c hb hc`.
   revert_after a, apply size_wf.induction a, intros a ih,
   cases a,
-  case sort : s { intros, cases hb, cases hc, use (sort s), exact ⟨r1_sort, r1_sort⟩, },
-  case var : v { intros, cases hb, cases hc, use (var v), exact ⟨r1_var, r1_var⟩ },
-  case app : l r { sorry },
-  case lam : l r { sorry },
-  case pi : l r { sorry }
-}
+  case sort : s { intros, cases hb, cases hc, use (sort s), exact ⟨red1_sort, red1_sort⟩, },
+  case var : v { intros, cases hb, cases hc, use (var v), exact ⟨red1_var, red1_var⟩ },
+  case app : l r
+  { intros,
+    cases hb,
+    case red1_beta : t e eb r rb heb hrb
+    { cases hc,
+      case red1_beta : t e ec r rc hec hrc
+      { rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
+        rcases (ih r size_lt_size_lam_r hrb hrc) with ⟨r', _, _⟩,
+        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_subs _ _, red1_subs _ _⟩, assumption' },
+      case red1_app : tec r rc htec hrc
+      { rcases htec with _ | _ | _ | _ | @⟨t, tc, e, ec, htc, hec⟩ | _,
+        rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
+        rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
+        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_subs _ _, red1_beta _ _⟩, assumption' } },
+    case red1_app : te teb r rb hteb hrb
+    { cases hc,
+      case red1_beta : t e ec r rc hec hrc
+      { rcases hteb with _ | _ | _ | _ | @⟨t, tb, e, eb, htb, heb⟩ | _,
+        rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
+        rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
+        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_beta _ _, red1_subs _ _⟩, assumption' },
+      case red1_app : l lc r rc hlc hrc
+      { rcases (ih l size_lt_size_app_l hteb hlc) with ⟨l', _, _⟩,
+        rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
+        use (app l' r'), refine ⟨red1_app _ _, red1_app _ _⟩, assumption' } } },
+  case lam : l r
+  { intros,
+    rcases hb with _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩ | _,
+    rcases hc with _ | _ | _ | _ | @⟨l, lc, r, rc, hlc, hrc⟩ | _,
+    rcases (ih l size_lt_size_lam_l hlb hlc) with ⟨l', _, _⟩,
+    rcases (ih r size_lt_size_lam_r hrb hrc) with ⟨r', _, _⟩,
+    use (lam l' r'), refine ⟨red1_lam _ _, red1_lam _ _⟩, assumption' },
+  case pi : l r
+  { intros,
+    rcases hb with _ | _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩,
+    rcases hc with _ | _ | _ | _ | _ | @⟨l, lc, r, rc, hlc, hrc⟩,
+    rcases (ih l size_lt_size_pi_l hlb hlc) with ⟨l', hl₁, hl₂⟩,
+    rcases (ih r size_lt_size_pi_r hrb hrc) with ⟨r', hr₁, hr₂⟩,
+    use (pi l' r'), refine ⟨red1_pi _ _, red1_pi _ _⟩, assumption' } }
 
 end
 end coc
