@@ -1,4 +1,5 @@
 import tactic
+import data.prod.lex
 import expr
 
 namespace coc
@@ -15,20 +16,11 @@ local notation `⊢ ` Γ                 := ctx_wf Γ
 
 /- Auxiliary arithmetic lemmas. -/
 
-lemma nat.order_aux_1 {a b : nat} (h₁ : ¬a < b) (h₂ : ¬a = b) : (b < a) :=
-  ne.lt_of_le (ne.symm h₂) (le_of_not_gt h₁)
-
-lemma nat.order_aux_2 {a b c : nat} (h : a + b < c) : b < c :=
-  lt_of_le_of_lt (nat.le_add_left b a) h
-
-lemma nat.order_aux_3 {a b c : nat} (h : a + b < c) : a < c :=
-  lt_of_le_of_lt (nat.le_add_right a b) h
-
-lemma nat.le_add_left' (a b c : ℕ) (h : a ≤ b) : a ≤ c + b :=
-  le_add_left h
-
-lemma nat.le_add_right' (a b c : ℕ) (h : a ≤ b) : a ≤ b + c :=
-  le_add_right h
+lemma nat.order_aux_1 {a b : nat} (h₁ : ¬a < b) (h₂ : ¬a = b) : (b < a) := ne.lt_of_le (ne.symm h₂) (le_of_not_gt h₁)
+lemma nat.order_aux_2 {a b c : nat} (h : a + b < c) : b < c := lt_of_le_of_lt (nat.le_add_left b a) h
+lemma nat.order_aux_3 {a b c : nat} (h : a + b < c) : a < c := lt_of_le_of_lt (nat.le_add_right a b) h
+lemma nat.le_add_left' (a b c : ℕ) (h : a ≤ b) : a ≤ c + b := le_add_left h
+lemma nat.le_add_right' (a b c : ℕ) (h : a ≤ b) : a ≤ b + c := le_add_right h
 
 -- #check @nat.le.intro
 -- #check @nat.le.dest
@@ -40,26 +32,21 @@ open idx
 
 /- Uninteresting `shift` lemmas for supporting case analysis. -/
 
-lemma shift_le {v n m} (h : n ≤ v) :
-  var (bound v) ⟦n ↟ m⟧ = var (bound (v + m)) := by
+lemma shift_le {v n m} (h : n ≤ v) : var (bound v) ⟦n ↟ m⟧ = var (bound (v + m)) := by
 { unfold shift, split_ifs, refl }
 
-lemma shift_gt {v n m} (h : v < n) :
-  var (bound v) ⟦n ↟ m⟧ = var (bound v) := by
+lemma shift_gt {v n m} (h : v < n) : var (bound v) ⟦n ↟ m⟧ = var (bound v) := by
 { unfold shift, split_ifs with hif, exfalso, exact not_le_of_lt h hif, refl }
 
 /- Uninteresting `subst` lemmas for supporting case analysis. -/
 
-lemma subst_lt {v n e'} (h : n < v) :
-  var (bound v) ⟦n ↦ e'⟧ = var (bound (nat.pred v)) := by
+lemma subst_lt {v n e'} (h : n < v) : var (bound v) ⟦n ↦ e'⟧ = var (bound (nat.pred v)) := by
 { unfold subst, split_ifs, refl }
 
-lemma subst_eq {n e'} :
-  var (bound n) ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
+lemma subst_eq {n e'} : var (bound n) ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
 { unfold subst, split_ifs with hif, { exfalso, exact nat.lt_irrefl _ hif }, refl }
 
-lemma subst_gt {v n e'} (h : v < n) :
-  var (bound v) ⟦n ↦ e'⟧ = var (bound v) := by
+lemma subst_gt {v n e'} (h : v < n) : var (bound v) ⟦n ↦ e'⟧ = var (bound v) := by
 { unfold subst, split_ifs with hif₁ hif₂,
   { exfalso, exact nat.lt_irrefl _ (nat.lt_trans h hif₁) },
   { rw hif₂ at h, exfalso, exact nat.lt_irrefl _ h },
@@ -148,7 +135,7 @@ lemma shift_subst_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ e'
   case lam : t e ht he { unfold shift subst, rw [ht, ← nat.add_succ, he], refl },
   case pi : t₁ t₂ ht₁ ht₂ { unfold shift subst, rw [ht₁, ← nat.add_succ, ht₂], refl } }
 
-lemma shift_subst_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ := 
+lemma shift_subst_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ :=
   shift_subst_above_ind e e' 0 n m
 
 lemma shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := by
@@ -202,7 +189,7 @@ lemma shift_subst_below_ind (e e' k n m) : e ⟦nat.succ (n + k) ↟ m⟧ ⟦k �
 lemma shift_subst_below (e e' n m) : e ⟦nat.succ n ↟ m⟧ ⟦0 ↦ e' ⟦n ↟ m⟧⟧ = e ⟦0 ↦ e'⟧ ⟦n ↟ m⟧ :=
   shift_subst_below_ind e e' 0 n m
 
-/- How `sub` interacts with itself. -/
+/- How `subst` interacts with itself. -/
 
 lemma subst_subst_ind (e e₁ e₂ k n) : e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦k ↦ e₁⟧ ⟦(n + k) ↦ e₂⟧ := by
 { induction e generalizing e₁ e₂ k n,
@@ -243,35 +230,15 @@ lemma subst_subst (e e₁ e₂ n) : e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ 
 
 /- Uninteresting `size` lemmas to support strong induction on `expr`. -/
 
-lemma size_wf : well_founded (λ e₁ e₂ : expr, size e₁ < size e₂) :=
-  measure_wf size
-
-lemma size_lt_size_app_l {l r} : size l < size (app l r) := by
-{ unfold size, rw [← nat.add_succ], simp }
-
-lemma size_lt_size_app_r {l r} : size r < size (app l r) := by
-{ unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
-
-lemma size_lt_size_lam_l {l r} : size l < size (lam l r) := by
-{ unfold size, rw [← nat.add_succ], simp }
-
-lemma size_lt_size_lam_r {l r} : size r < size (lam l r) := by
-{ unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
-
+lemma size_wf : well_founded (λ e₁ e₂ : expr, size e₁ < size e₂) := measure_wf size
+lemma size_lt_size_app_l {l r} : size l < size (app l r) := by { unfold size, rw [← nat.add_succ], simp }
+lemma size_lt_size_app_r {l r} : size r < size (app l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
+lemma size_lt_size_lam_l {l r} : size l < size (lam l r) := by { unfold size, rw [← nat.add_succ], simp }
+lemma size_lt_size_lam_r {l r} : size r < size (lam l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
+lemma size_lt_size_pi_l {l r} : size l < size (pi l r) := by { unfold size, rw [← nat.add_succ], simp }
+lemma size_lt_size_pi_r {l r} : size r < size (pi l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
 lemma size_lt_size_app_lam_e {t e r} : size e < size (app (lam t e) r) :=
   nat.lt_trans size_lt_size_lam_r size_lt_size_app_l
-
-lemma size_lt_size_pi_l {l r} : size l < size (pi l r) := by
-{ unfold size, rw [← nat.add_succ], simp }
-
-lemma size_lt_size_pi_r {l r} : size r < size (pi l r) := by
-{ unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
-
-end
-end expr
-open expr
-
-/- Main part. -/
 
 /-- The "one-step reduction" relation `red_1 e₁ e₂`:
     "`e₁` reduces to `e₂` by contracting zero or more immediate redexes."
@@ -349,6 +316,7 @@ lemma red_1_subst_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l 
 lemma red_1_subst {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') : l ⟦0 ↦ r⟧ ~>₁ l' ⟦0 ↦ r'⟧ :=
   red_1_subst_ind hl hr 0
 
+/-- Confluence of one-step reduction. -/
 lemma red_1_confluent {a b c} (hb : a ~>₁ b) (hc : a ~>₁ c) : ∃ d, (b ~>₁ d) ∧ (c ~>₁ d) := by
 { -- Strong induction on `a` generalising `b c hb hc`.
   revert_after a, apply size_wf.induction a, intros a ih, intros,
@@ -392,13 +360,247 @@ lemma red_1_confluent {a b c} (hb : a ~>₁ b) (hc : a ~>₁ c) : ∃ d, (b ~>�
     rcases (ih r size_lt_size_pi_r hrb hrc) with ⟨r', hr₁, hr₂⟩,
     use (pi l' r'), refine ⟨r1_pi _ _, r1_pi _ _⟩, assumption' } }
 
-/-- Transitive closure of `red_1`. -/
+/-- Transitive closure of one-step reduction. -/
 inductive red_n : nat → expr → expr → Prop
 | rn_refl {e}          :                                 red_n 0 e e
 | rn_step {n e₁ e₂ e₃} : red_n n e₁ e₂ → (red_1 e₂ e₃) → red_n (nat.succ n) e₁ e₃
 open red_n
 
 local notation e ` ~>⟦` n `⟧ ` e' := red_n n e e'
+
+/- Main part. -/
+namespace red_n_confluent
+section
+
+-- instance : linear_order (nat ×ₗ nat) := infer_instance
+
+-- #check to_lex
+-- #check of_lex
+#check prod.lex_wf nat.lt_wf nat.lt_wf
+#check prod.lex.lt_iff
+#check prod.lex.le_iff
+#check prod.lex.left
+#check prod.lex.right
+
+/-- Auxiliary grid structure for proving confluence of `red_n`. -/
+structure aux (n m : nat) (a b c : expr) (grid : nat → nat → expr) (cur : nat × nat) : Prop :=
+  (ha : grid 0 0 = a) (hb : grid n 0 = b) (hc : grid 0 m = c)
+  (go_down  (i j : nat) : i < n → j ≤ m → j = 0 ∨ to_lex (i.succ, j) ≤ to_lex cur → (grid i j ~>₁ grid i.succ j))
+  (go_right (i j : nat) : i ≤ n → j < m → i = 0 ∨ to_lex (i, j.succ) ≤ to_lex cur → (grid i j ~>₁ grid i j.succ))
+
+/-- The grid update function. -/
+def update (grid : nat → nat → expr) (i j : nat) (e : expr) : nat → nat → expr :=
+  λ i' j', if i' = i then (if j' = j then e else grid i' j') else grid i' j'
+
+lemma update_eq {g i j e} : update g i j e i j = e := by
+{ unfold update, split_ifs; refl }
+
+lemma update_ne_fst {g i j e i' j'} (h : i' ≠ i) : update g i j e i' j' = g i' j' := by
+{ unfold update, split_ifs; refl <|> contradiction }
+
+lemma update_ne_snd {g i j e i' j'} (h : j' ≠ j) : update g i j e i' j' = g i' j' := by
+{ unfold update, split_ifs; refl }
+
+/-- Fill the zeroth row and column. -/
+lemma init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, aux n m a b c g (0, 0) := by
+{ induction n with n ihn generalizing b c,
+  { -- Zeroth row
+    rcases hb with hb | _,
+    induction m with m ihm generalizing c,
+    { cases hc, use (λ _ _, a), split; refl <|> skip,
+      { intros _ _ h, exfalso, exact nat.not_lt_zero _ h },
+      { intros _ _ _ h, exfalso, exact nat.not_lt_zero _ h } },
+    rcases hc with _ | @⟨n, c₁, c₂, c₃, hc₁, hc₂⟩,
+    rcases ihm hc₁ with ⟨g, ha, hb, hc, go_down, go_right⟩,
+    use (update g 0 m.succ c), split,
+    { rw update_ne_snd (nat.succ_ne_zero _).symm, exact ha },
+    { rw update_ne_snd (nat.succ_ne_zero _).symm, exact ha },
+    { rw update_eq },
+    { intros i j hi hj h, exfalso, exact nat.not_lt_zero _ hi },
+    { intros i j hi hj h,
+      rw [update_ne_snd (ne_of_lt hj), nat.eq_zero_of_le_zero hi],
+      cases lt_or_eq_of_le (nat.le_of_lt_succ hj) with hj hj,
+      { rw update_ne_snd (ne_of_lt (nat.succ_lt_succ hj)),
+        apply go_right 0 j, { refl }, { exact hj }, { left, refl } },
+      { rw [hj, update_eq, hc], exact hc₂ } } },
+  { -- Zeroth column; the rest we don't care now
+    rcases hb with _ | @⟨m, b₁, b₂, b₃, hb₁, hb₂⟩,
+    rcases ihn hb₁ hc with ⟨g, ha, hb, hc, go_down, go_right⟩,
+    use (update g n.succ 0 b), split,
+    { rw update_ne_fst (nat.succ_ne_zero _).symm, exact ha },
+    { rw update_eq },
+    { rw update_ne_fst (nat.succ_ne_zero _).symm, exact hc },
+    { intros i j hi hj h,
+      cases h with h h,
+      { rw [h, update_ne_fst (ne_of_lt hi)],
+        cases lt_or_eq_of_le (nat.le_of_lt_succ hi) with hi hi,
+        { rw update_ne_fst (ne_of_lt (nat.succ_lt_succ hi)),
+          apply go_down i 0, { exact hi }, { exact nat.zero_le _ }, { left, refl } },
+        { rw [hi, update_eq, hb], exact hb₂ } },
+      { rw prod.lex.le_iff at h,
+        rcases h with h | ⟨h₁, h₂⟩,
+        { exfalso, exact nat.not_lt_zero _ h },
+        { exfalso, exact nat.succ_ne_zero _ h₁ } } },
+    { intros i j hi hj h,
+      cases h with h h,
+      { rw h, apply go_right 0 j, { exact nat.zero_le _ }, { exact hj }, { left, refl } },
+      { rw prod.lex.le_iff at h,
+      rcases h with h | ⟨h₁, h₂⟩,
+        { exfalso, exact nat.not_lt_zero _ h },
+        { exfalso, exact nat.not_succ_le_zero _ h₂ } } } } }
+
+/-- Fill the rest of the grid. -/
+lemma traverse {n m a b c g} (h : aux n m a b c g (0, 0)) : ∀ cur, ∃ g', aux n m a b c g' cur := by
+{ -- Induction on the lexical ordering of `cur`.
+  intros cur, apply (prod.lex_wf nat.lt_wf nat.lt_wf).induction cur, rintros ⟨i, j⟩ ih,
+
+  cases i with i,
+  { -- Zeroth row (already done in `init`, we just need to move cursor)
+    rcases h with ⟨ha, hb, hc, go_down, go_right⟩, refine ⟨g, ha, hb, hc, _, _⟩,
+    { intros i' j' hi' hj' h, refine (go_down i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { exfalso, exact nat.not_lt_zero _ h },
+      { exfalso, exact nat.succ_ne_zero _ h₁ } },
+    { intros i' j' hi' hj' h, refine (go_right i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { exfalso, exact nat.not_lt_zero _ h },
+      { exact or.inl h₁ } } },
+
+  cases j with j,
+  { -- Zeroth column (already done in `init`, we just need to move cursor)
+    replace ih := ih (i, m) (prod.lex.left _ _ (lt_add_one i)),
+    rcases ih with ⟨g, ha, hb, hc, go_down, go_right⟩,
+    refine ⟨g, ha, hb, hc, _, _⟩,
+    { intros i' j' hi' hj' h, refine (go_down i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { right, rw prod.lex.le_iff,
+        cases (lt_or_eq_of_le (nat.le_of_lt_succ h)) with h h,
+        { exact or.inl h },
+        { exact or.inr ⟨h, hj'⟩ } },
+      { left, replace h₂ : j' = 0 := nat.eq_zero_of_le_zero h₂, rw h₂ } },
+    { intros i' j' hi' hj' h, refine (go_right i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { right, rw prod.lex.le_iff,
+        cases (lt_or_eq_of_le (nat.le_of_lt_succ h)) with h h,
+        { exact or.inl h },
+        { exact or.inr ⟨h, hj'⟩ } },
+      { exfalso, exact nat.not_succ_le_zero _ h₂ } } },
+
+  -- Inductive case.
+  replace ih := ih (i.succ, j) (prod.lex.right _ (lt_add_one j)),
+  rcases ih with ⟨g, ha, hb, hc, go_down, go_right⟩,
+
+  cases (lt_or_le i n) with hi hi, swap,
+  { -- `i` overflow (no modification)
+    refine ⟨g, ha, hb, hc, _, _⟩,
+    { intros i' j' hi' hj' h, refine (go_down i' j' hi' hj' _),
+      rw prod.lex.le_iff, right, left,
+      exact nat.succ_lt_succ (nat.lt_of_lt_of_le hi' hi) },
+    { intros i' j' hi' hj' h, refine (go_right i' j' hi' hj' _),
+      rw prod.lex.le_iff, right, left,
+      exact nat.lt_succ_of_le (nat.le_trans hi' hi) } },
+
+  cases (lt_or_le j m) with hj hj, swap,
+  { -- `j` overflow (no modification)
+    refine ⟨g, ha, hb, hc, _, _⟩,
+    { intros i' j' hi' hj' h, refine (go_down i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { right, rw prod.lex.le_iff, left, exact h },
+      { right, rw prod.lex.le_iff, right, exact ⟨h₁, nat.le_trans hj' hj⟩ } },
+    { intros i' j' hi' hj' h, refine (go_right i' j' hi' hj' _),
+      rw prod.lex.le_iff at h,
+      rcases h with h | h | ⟨h₁, h₂⟩,
+      { exact or.inl h },
+      { right, rw prod.lex.le_iff, left, exact h },
+      { right, rw prod.lex.le_iff, right, exact ⟨h₁, nat.le_trans hj' hj⟩ } } },
+
+  -- The only "interesting" case (but still trivial intuitively)...
+  let a' := g i j, let b' := g i.succ j, let c' := g i j.succ,
+  have hab' : (a' ~>₁ b') := go_down i j hi (nat.le_of_lt hj) (or.inr _), swap,
+  { rw prod.lex.le_iff, right, exact ⟨rfl, nat.le_refl _⟩ },
+  have hac' : (a' ~>₁ c') := go_right i j (nat.le_of_lt hi) hj (or.inr _), swap,
+  { rw prod.lex.le_iff, left, exact lt_add_one _ },
+  rcases (red_1_confluent hab' hac') with ⟨d', hbd', hcd'⟩,
+
+  -- Modify grid, prove invariants.
+  use (update g i.succ j.succ d'),
+  split,
+  { rw update_ne_fst (nat.succ_ne_zero _).symm, exact ha },
+  { rw update_ne_snd (nat.succ_ne_zero _).symm, exact hb },
+  { rw update_ne_fst (nat.succ_ne_zero _).symm, exact hc },
+  { intros i' j' hi' hj' h,
+    rw prod.lex.le_iff at h,
+    rcases h with h | h | ⟨h₁, h₂⟩,
+    { rw [h, update_ne_snd (nat.succ_ne_zero _).symm, update_ne_snd (nat.succ_ne_zero _).symm],
+      exact go_down i' 0 hi' (nat.zero_le _) (or.inl rfl), },
+    { unfold prod.fst at h,
+      rw [update_ne_fst (ne_of_lt h), update_ne_fst (ne_of_lt (nat.lt_of_succ_lt h))],
+      refine go_down i' j' hi' hj' _, right, rw prod.lex.le_iff, exact or.inl h },
+    { unfold prod.fst prod.snd at h₁ h₂,
+      replace h₁ := nat.succ.inj h₁,
+      cases (lt_or_eq_of_le h₂) with h₂ h₂,
+      { rw [h₁, update_ne_snd (ne_of_lt h₂), update_ne_snd (ne_of_lt h₂)],
+        apply go_down i j' hi hj', right, rw prod.lex.le_iff,
+        exact or.inr ⟨rfl, nat.le_of_lt_succ h₂⟩ },
+      { rw [h₁, h₂, update_ne_fst (nat.succ_ne_self _).symm, update_eq], exact hcd' } } },
+  { intros i' j' hi' hj' h,
+    rw prod.lex.le_iff at h,
+    rcases h with h | h | ⟨h₁, h₂⟩,
+    { rw [h, update_ne_fst (nat.succ_ne_zero _).symm, update_ne_fst (nat.succ_ne_zero _).symm],
+      exact go_right 0 j' (nat.zero_le _) hj' (or.inl rfl) },
+    { unfold prod.fst at h,
+      rw [update_ne_fst (ne_of_lt h), update_ne_fst (ne_of_lt h)],
+      refine go_right i' j' hi' hj' _, right, rw prod.lex.le_iff, exact or.inl h },
+    { unfold prod.fst prod.snd at h₁ h₂,
+      replace h₂ := nat.le_of_succ_le_succ h₂,
+      rw [h₁, update_ne_snd (ne_of_lt (nat.lt_succ_of_le h₂))],
+      cases (lt_or_eq_of_le h₂) with h₂ h₂,
+      { rw update_ne_snd (ne_of_lt (nat.succ_lt_succ h₂)),
+        apply go_right i.succ j' (nat.succ_le_of_lt hi) hj', right, rw prod.lex.le_iff,
+        exact or.inr ⟨rfl, nat.succ_le_of_lt h₂⟩ },
+      { rw [h₂, update_eq], exact hbd' } } } }
+
+/-- Extract conclusion from a filled grid. -/
+lemma final {n m a b c g} (h : aux n m a b c g (n, m)) : ∃ d, (b ~>⟦m⟧ d) ∧ (c ~>⟦n⟧ d) := by
+{ rcases h with ⟨ha, hb, hc, go_down, go_right⟩,
+  use g n m, split,
+  { -- Last row
+    suffices : ∀ j, j ≤ m → (b ~>⟦j⟧ g n j), { exact this m (nat.le_refl _) },
+    intros j,
+    induction j with j hj,
+    { intros ih, rw hb, exact rn_refl },
+    { intros ih, apply @rn_step _ _ (g n j) _, { exact hj (nat.le_of_succ_le ih) },
+      apply go_right, exact nat.le_refl _, exact nat.lt_of_succ_le ih,
+      right, exact prod.lex.right _ ih, } },
+  { -- Last column
+    suffices : ∀ i, i ≤ n → (c ~>⟦i⟧ g i m), { exact this n (nat.le_refl _) },
+    intros i,
+    induction i with i hi,
+    { intros ih, rw hc, exact rn_refl },
+    { intros ih, apply @rn_step _ _ (g i m) _, { exact hi (nat.le_of_succ_le ih) },
+      apply go_down, exact nat.lt_of_succ_le ih, exact nat.le_refl _,
+      right, cases eq_or_lt_of_le ih with h h, rw h, exact prod.lex.left _ _ (nat.lt_of_succ_le h), } } }
+
+end
+end red_n_confluent
+
+lemma red_n_confluent {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ d, (b ~>⟦m⟧ d) ∧ (c ~>⟦n⟧ d) :=
+  let ⟨_, aux₁⟩ := red_n_confluent.init hb hc,
+      ⟨_, aux₂⟩ := red_n_confluent.traverse aux₁ (n, m)
+  in (red_n_confluent.final aux₂)
+
+end
+end expr
 
 end
 end coc
