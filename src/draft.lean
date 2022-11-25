@@ -7,6 +7,20 @@ section
 open idx
 open expr
 
+/-- Three-way comparison operator. -/
+inductive threeway (m n : nat) : Prop
+| lt : m < n → threeway
+| eq : m = n → threeway
+| gt : n < m → threeway
+
+@[irreducible]
+def threeway_cmp (m n : nat) : threeway m n :=
+  dite (m < n) threeway.lt
+    (dite (m = n) (λ h _, threeway.eq h)
+      (λ h₁ h₂, threeway.gt
+        (nat.lt_of_le_and_ne (le_of_not_lt h₂)
+          (λ h : n = m, (h₁ h.symm)))))
+
 def expr.has_open : expr → nat → Prop
 | (sort s)        n := false
 | (var (bound b)) n := b = n

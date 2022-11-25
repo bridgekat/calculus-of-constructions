@@ -6,8 +6,8 @@ section
 
 set_option pp.structure_projections false
 
-local notation e ` ⟦` n ` ↦ ` e' `⟧`  := expr.subs e n e'
-local notation e ` ⟦` n ` ↟ ` m `⟧`   := expr.gap e n m
+local notation e ` ⟦` n ` ↦ ` e' `⟧`  := expr.subst e n e'
+local notation e ` ⟦` n ` ↟ ` m `⟧`   := expr.shift e n m
 local notation e ` ~> ` e'            := small e e'
 local notation e ` ~>* ` e'           := small_star e e'
 local notation Γ ` ⊢ ` e `: ` t       := has_type Γ e t
@@ -38,220 +38,208 @@ section
 
 open idx
 
-/- Uninteresting `gap` lemmas for supporting case analysis. -/
+/- Uninteresting `shift` lemmas for supporting case analysis. -/
 
-lemma gap_bound (v n m) : var (bound v) ⟦n ↟ m⟧ =
-  if n <= v then var (bound (v + m)) else var (bound v) := by unfold gap
-
-lemma gap_bound_n_le_v {v n m} (h : n ≤ v) :
+lemma shift_le {v n m} (h : n ≤ v) :
   var (bound v) ⟦n ↟ m⟧ = var (bound (v + m)) := by
-  { unfold gap, split_ifs, refl }
+{ unfold shift, split_ifs, refl }
 
-lemma gap_bound_v_lt_n {v n m} (h : v < n) :
+lemma shift_gt {v n m} (h : v < n) :
   var (bound v) ⟦n ↟ m⟧ = var (bound v) := by
-  { unfold gap, split_ifs with hif, exfalso, exact not_le_of_lt h hif, refl }
+{ unfold shift, split_ifs with hif, exfalso, exact not_le_of_lt h hif, refl }
 
-/- Uninteresting `subs` lemmas for supporting case analysis. -/
+/- Uninteresting `subst` lemmas for supporting case analysis. -/
 
-lemma subs_bound (v n e') : var (bound v) ⟦n ↦ e'⟧ =
-  if n < v then var (bound v.pred)
-  else if n = v then e'.gap 0 n
-  else (var (bound v)) := by unfold subs
+lemma subst_lt {v n e'} (h : n < v) :
+  var (bound v) ⟦n ↦ e'⟧ = var (bound (nat.pred v)) := by
+{ unfold subst, split_ifs, refl }
 
-lemma subs_bound_n_lt_v {v n e'} (h : n < v) :
-  var (bound v) ⟦n ↦ e'⟧ = var (bound v.pred) := by
-  { unfold subs, split_ifs, refl }
+lemma subst_eq {n e'} :
+  var (bound n) ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
+{ unfold subst, split_ifs with hif, { exfalso, exact nat.lt_irrefl _ hif }, refl }
 
-lemma subs_bound_eq {n e'} :
-  var (bound n) ⟦n ↦ e'⟧ = e'.gap 0 n := by
-  { unfold subs, split_ifs with hif, { exfalso, exact nat.lt_irrefl _ hif }, refl }
-
-lemma subs_bound_v_lt_n {v n e'} (h : v < n) :
+lemma subst_gt {v n e'} (h : v < n) :
   var (bound v) ⟦n ↦ e'⟧ = var (bound v) := by
-  { unfold subs, split_ifs with hif₁ hif₂,
-    { exfalso, exact nat.lt_irrefl _ (nat.lt_trans h hif₁) },
-    { rw hif₂ at h, exfalso, exact nat.lt_irrefl _ h },
-    refl }
+{ unfold subst, split_ifs with hif₁ hif₂,
+  { exfalso, exact nat.lt_irrefl _ (nat.lt_trans h hif₁) },
+  { rw hif₂ at h, exfalso, exact nat.lt_irrefl _ h },
+  refl }
 
-/- How `gap` interacts with itself. -/
+/- How `shift` interacts with itself. -/
 
-lemma gap_zero (e n) : e ⟦n ↟ 0⟧ = e := by
+lemma shift_zero (e n) : e ⟦n ↟ 0⟧ = e := by
 { induction e generalizing n,
-  case sort : s { unfold gap },
-  case var : v { cases v; unfold gap; split_ifs; simp },
-  case app : l r ihl ihr { unfold gap, rw [ihl, ihr] },
-  case lam : t e iht ihe { unfold gap, rw [iht, ihe] },
-  case pi : t₁ t₂ iht₁ iht₂ { unfold gap, rw [iht₁, iht₂] } }
+  case sort : s { unfold shift },
+  case var : v { cases v; unfold shift; split_ifs; simp },
+  case app : l r ihl ihr { unfold shift, rw [ihl, ihr] },
+  case lam : t e iht ihe { unfold shift, rw [iht, ihe] },
+  case pi : t₁ t₂ iht₁ iht₂ { unfold shift, rw [iht₁, iht₂] } }
 
-lemma gap_gap_disjoint_ind (e k a b c) : e ⟦k ↟ a⟧ ⟦(a + b + k) ↟ c⟧ = e ⟦(b + k) ↟ c⟧ ⟦k ↟ a⟧ := by
+lemma shift_shift_disjoint_ind (e k a b c) : e ⟦(b + k) ↟ c⟧ ⟦k ↟ a⟧ = e ⟦k ↟ a⟧ ⟦(a + b + k) ↟ c⟧ := by
 { induction e generalizing k,
-  case sort : s { unfold gap },
+  case sort : s { unfold shift },
   case var : v
-  { cases v, swap, { unfold gap },
+  { cases v, swap, { unfold shift },
     rcases (lt_or_le v k) with h₁ | h₁,
-    { rw [gap_bound_v_lt_n h₁,
-          gap_bound_v_lt_n (nat.lt_add_left _ _ _ h₁),
-          gap_bound_v_lt_n (nat.lt_add_left _ _ _ h₁),
-          gap_bound_v_lt_n h₁] },
+    { rw [shift_gt (nat.lt_add_left _ _ _ h₁),
+          shift_gt h₁,
+          shift_gt (nat.lt_add_left _ _ _ h₁)] },
     rcases (lt_or_le v (b + k)) with h₂ | h₂,
-    { rw [gap_bound_n_le_v h₁, nat.add_comm, nat.add_assoc,
-          gap_bound_v_lt_n (nat.add_lt_add_left h₂ _),
-          gap_bound_v_lt_n h₂,
-          gap_bound_n_le_v h₁, nat.add_comm] },
-    { rw [gap_bound_n_le_v h₁, nat.add_comm, nat.add_assoc,
-          gap_bound_n_le_v (nat.add_le_add_left h₂ _),
-          gap_bound_n_le_v h₂,
-          gap_bound_n_le_v (nat.le_add_right' _ _ _ h₁), nat.add_assoc, nat.add_comm] } },
-  case app : l r ihl ihr { unfold gap, rw [ihl, ihr] },
-  case lam : t e iht ihe { unfold gap, rw [iht, ← nat.add_succ, ihe], refl },
-  case pi : t₁ t₂ iht₁ iht₂ { unfold gap, rw [iht₁, ← nat.add_succ, iht₂], refl } }
+    { rw [shift_gt h₂,
+          shift_le h₁, nat.add_comm, nat.add_assoc,
+          shift_gt (nat.add_lt_add_left h₂ _)] },
+    { rw [shift_le h₂,
+          shift_le (nat.le_add_right' _ _ _ h₁),
+          shift_le h₁, nat.add_comm v a, nat.add_assoc a b k,
+          shift_le (nat.add_le_add_left h₂ _), nat.add_comm, nat.add_assoc] } },
+  case app : l r ihl ihr { unfold shift, rw [ihl, ihr] },
+  case lam : t e iht ihe { unfold shift, rw [iht, ← nat.add_succ, ihe], refl },
+  case pi : t₁ t₂ iht₁ iht₂ { unfold shift, rw [iht₁, ← nat.add_succ, iht₂], refl } }
 
-lemma gap_gap_disjoint (e a b c) : e ⟦0 ↟ a⟧ ⟦(a + b) ↟ c⟧ = e ⟦b ↟ c⟧ ⟦0 ↟ a⟧ :=
-  gap_gap_disjoint_ind e 0 a b c
+lemma shift_shift_disjoint (e a b c) : e ⟦b ↟ c⟧ ⟦0 ↟ a⟧ = e ⟦0 ↟ a⟧ ⟦(a + b) ↟ c⟧ :=
+  shift_shift_disjoint_ind e 0 a b c
 
-lemma gap_gap_overlap_ind (e k a b c) : e ⟦k ↟ (a + b + c)⟧ = e ⟦k ↟ (a + b)⟧ ⟦(k + a) ↟ c⟧ := by
+lemma shift_shift_overlap_ind (e k a b c) : e ⟦k ↟ (a + b)⟧ ⟦(a + k) ↟ c⟧ = e ⟦k ↟ (a + b + c)⟧ := by
 { induction e generalizing k,
-  case sort : s { unfold gap },
+  case sort : s { unfold shift },
   case var : v
-  { cases v, swap, { unfold gap },
+  { cases v, swap, { unfold shift },
     rcases (lt_or_le v k) with h | h,
-    { rw [gap_bound_v_lt_n h,
-          gap_bound_v_lt_n h,
-          gap_bound_v_lt_n (nat.lt_add_right _ _ _ h)] },
-    { rw [gap_bound_n_le_v h,
-          gap_bound_n_le_v h, ← nat.add_assoc v a b,
-          gap_bound_n_le_v (nat.le_add_right' _ _ _ (nat.add_le_add_right h _)),
-          ← nat.add_assoc, ← nat.add_assoc] } },
-  case app : l r ihl ihr { unfold gap, rw [ihl, ihr] },
-  case lam : t e iht ihe { unfold gap, rw [iht, ihe, nat.succ_add] },
-  case pi : t₁ t₂ iht₁ iht₂ { unfold gap, rw [iht₁, iht₂, nat.succ_add] } }
+    { rw [shift_gt h,
+          shift_gt (nat.lt_add_left _ _ _ h),
+          shift_gt h] },
+    { rw [shift_le h, nat.add_comm a k, ← nat.add_assoc,
+          shift_le (nat.le_add_right' _ _ _ (nat.add_le_add_right h _)),
+          shift_le h, ← nat.add_assoc, ← nat.add_assoc] } },
+  case app : l r ihl ihr { unfold shift, rw [ihl, ihr] },
+  case lam : t e iht ihe { unfold shift, rw [iht, ← nat.add_succ, ihe], },
+  case pi : t₁ t₂ iht₁ iht₂ { unfold shift, rw [iht₁, ← nat.add_succ, iht₂] } }
 
-lemma gap_gap_overlap (e a b c) : e ⟦0 ↟ (a + b + c)⟧ = e ⟦0 ↟ (a + b)⟧ ⟦a ↟ c⟧ :=
-  @eq.subst _ (λ x, e ⟦0 ↟ (a + b + c)⟧ = e ⟦0 ↟ (a + b)⟧ ⟦x ↟ c⟧) _ _
-    (nat.zero_add a) (gap_gap_overlap_ind e 0 a b c)
+lemma shift_shift_overlap (e a b c) : e ⟦0 ↟ (a + b)⟧ ⟦a ↟ c⟧ = e ⟦0 ↟ (a + b + c)⟧ :=
+  shift_shift_overlap_ind e 0 a b c
 
-/- How `gap` and `subs` interact with each other. -/
+/- How `shift` and `subst` interact with each other. -/
 
-lemma gap_subs_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ e'⟧ = e ⟦(m + k) ↦ e'⟧ ⟦k ↟ n⟧ := by
+lemma shift_subst_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ e'⟧ = e ⟦(m + k) ↦ e'⟧ ⟦k ↟ n⟧ := by
 { induction e generalizing k n m,
-  case sort : s { unfold gap subs },
+  case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold gap subs },
+  { cases v, swap, { unfold shift subst },
     rcases (lt_or_le v k) with h₁ | h₁,
-    { rw [gap_bound_v_lt_n h₁,
-          subs_bound_v_lt_n (nat.lt_add_left _ _ _ h₁),
-          subs_bound_v_lt_n (nat.lt_add_left _ _ _ h₁),
-          gap_bound_v_lt_n h₁] },
-    { rw gap_bound_n_le_v h₁,
+    { rw [shift_gt h₁,
+          subst_gt (nat.lt_add_left _ _ _ h₁),
+          subst_gt (nat.lt_add_left _ _ _ h₁),
+          shift_gt h₁] },
+    { rw shift_le h₁,
       rcases (nat.lt_trichotomy v (m + k)) with h₂ | h₂ | h₂,
-      { rw [subs_bound_v_lt_n h₂, nat.add_comm, nat.add_assoc,
-            subs_bound_v_lt_n (nat.add_lt_add_left h₂ _),
-            gap_bound_n_le_v h₁, nat.add_comm] },
+      { rw [subst_gt h₂, nat.add_comm, nat.add_assoc,
+            subst_gt (nat.add_lt_add_left h₂ _),
+            shift_le h₁, nat.add_comm] },
       { rw [nat.add_comm, nat.add_assoc, h₂,
-            subs_bound_eq,
-            subs_bound_eq, nat.add_comm, nat.add_comm m k,
-            gap_gap_overlap _ _ _ _] },
+            subst_eq,
+            subst_eq, nat.add_comm, nat.add_comm m k,
+            shift_shift_overlap _ _ _ _] },
       { cases v, { exfalso, exact nat.not_lt_zero _ h₂, },
         rw [nat.add_comm, nat.add_assoc,
-            subs_bound_n_lt_v (nat.add_lt_add_left h₂ _),
-            subs_bound_n_lt_v h₂, nat.add_succ, nat.pred_succ, nat.pred_succ,
-            gap_bound_n_le_v (nat.le_of_lt_succ (nat.order_aux_2 h₂)), nat.add_comm] } } },
-  case app : l r hl hr { unfold gap subs, rw [hl, hr] },
-  case lam : t e ht he { unfold gap subs, rw [ht, ← nat.add_succ, he], refl },
-  case pi : t₁ t₂ ht₁ ht₂ { unfold gap subs, rw [ht₁, ← nat.add_succ, ht₂], refl } }
+            subst_lt (nat.add_lt_add_left h₂ _),
+            subst_lt h₂, nat.add_succ, nat.pred_succ, nat.pred_succ,
+            shift_le (nat.le_of_lt_succ (nat.order_aux_2 h₂)), nat.add_comm] } } },
+  case app : l r hl hr { unfold shift subst, rw [hl, hr] },
+  case lam : t e ht he { unfold shift subst, rw [ht, ← nat.add_succ, he], refl },
+  case pi : t₁ t₂ ht₁ ht₂ { unfold shift subst, rw [ht₁, ← nat.add_succ, ht₂], refl } }
 
-lemma gap_subs_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ := 
-  gap_subs_above_ind e e' 0 n m
+lemma shift_subst_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ := 
+  shift_subst_above_ind e e' 0 n m
 
-lemma gap_subs_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := by
+lemma shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := by
 { induction e generalizing k,
-  case sort : s { unfold gap subs },
+  case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold gap subs },
+  { cases v, swap, { unfold shift subst },
     rcases (lt_or_le v k) with h₁ | h₁,
-    { rw [gap_bound_v_lt_n h₁,
-          gap_bound_v_lt_n h₁,
-          subs_bound_v_lt_n (nat.lt_add_left _ _ _ h₁)] },
-    { rw [gap_bound_n_le_v h₁,
-          gap_bound_n_le_v h₁, nat.add_succ, ← nat.add_assoc, nat.add_comm n k,
-          subs_bound_n_lt_v (nat.lt_succ_of_le (nat.le_add_right' _ _ _ (nat.add_le_add_right h₁ _))),
+    { rw [shift_gt h₁,
+          shift_gt h₁,
+          subst_gt (nat.lt_add_left _ _ _ h₁)] },
+    { rw [shift_le h₁,
+          shift_le h₁, nat.add_succ, ← nat.add_assoc, nat.add_comm n k,
+          subst_lt (nat.lt_succ_of_le (nat.le_add_right' _ _ _ (nat.add_le_add_right h₁ _))),
           nat.pred_succ] } },
-  case app : l r hl hr { unfold gap subs, rw [hl, hr] },
-  case lam : t e ht he { unfold gap subs, rw [ht, ← nat.add_succ n k, he] },
-  case pi : t₁ t₂ ht₁ ht₂ { unfold gap subs, rw [ht₁, ← nat.add_succ n k, ht₂] } }
+  case app : l r hl hr { unfold shift subst, rw [hl, hr] },
+  case lam : t e ht he { unfold shift subst, rw [ht, ← nat.add_succ n k, he] },
+  case pi : t₁ t₂ ht₁ ht₂ { unfold shift subst, rw [ht₁, ← nat.add_succ n k, ht₂] } }
 
-lemma gap_subs_inside (e e') {n m} : e ⟦0 ↟ nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ :=
-  gap_subs_inside_ind e e' 0 n m
+lemma shift_subst_inside (e e') {n m} : e ⟦0 ↟ nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ :=
+  shift_subst_inside_ind e e' 0 n m
 
-lemma gap_subs_below_ind (e e' k n m) : e ⟦nat.succ (n + k) ↟ m⟧ ⟦k ↦ e' ⟦n ↟ m⟧⟧ = e ⟦k ↦ e'⟧ ⟦(n + k) ↟ m⟧ := by
+lemma shift_subst_below_ind (e e' k n m) : e ⟦nat.succ (n + k) ↟ m⟧ ⟦k ↦ e' ⟦n ↟ m⟧⟧ = e ⟦k ↦ e'⟧ ⟦(n + k) ↟ m⟧ := by
 { induction e generalizing k,
-  case sort : s { unfold gap subs },
+  case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold gap subs },
+  { cases v, swap, { unfold shift subst },
     rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
-    { rw [gap_bound_v_lt_n (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
-          subs_bound_v_lt_n h₁,
-          subs_bound_v_lt_n h₁,
-          gap_bound_v_lt_n (nat.lt_add_left _ _ _ h₁)] },
+    { rw [shift_gt (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
+          subst_gt h₁,
+          subst_gt h₁,
+          shift_gt (nat.lt_add_left _ _ _ h₁)] },
     { rw [← h₁,
-          gap_bound_v_lt_n (nat.lt_succ_of_le (nat.le_add_left' _ _ _ (nat.le_refl v))),
-          subs_bound_eq,
-          subs_bound_eq, nat.add_comm,
-          gap_gap_disjoint] },
+          shift_gt (nat.lt_succ_of_le (nat.le_add_left' _ _ _ (nat.le_refl v))),
+          subst_eq,
+          subst_eq, nat.add_comm,
+          shift_shift_disjoint] },
     { cases v, { exfalso, exact nat.not_lt_zero _ h₁ },
-      rw subs_bound_n_lt_v h₁,
+      rw subst_lt h₁,
       rcases (lt_or_le v (n + k)) with h₂ | h₂,
-      { rw [gap_bound_v_lt_n (nat.succ_lt_succ h₂), nat.pred_succ,
-            subs_bound_n_lt_v h₁,
-            gap_bound_v_lt_n h₂, nat.pred_succ] },
-      { rw [gap_bound_n_le_v (nat.succ_le_succ h₂), nat.pred_succ,
-            subs_bound_n_lt_v (nat.lt_add_right _ _ _ h₁), nat.succ_add,
-            gap_bound_n_le_v h₂, nat.pred_succ] } } },
-  case app : l r ihl ihr { unfold gap subs, rw [ihl, ihr] },
-  case lam : t e iht ihe { unfold gap subs, rw [iht, ← nat.add_succ, ihe],  },
-  case pi : t₁ t₂ iht₁ iht₂ { unfold gap subs, rw [iht₁, ← nat.add_succ, iht₂] } }
+      { rw [shift_gt (nat.succ_lt_succ h₂), nat.pred_succ,
+            subst_lt h₁,
+            shift_gt h₂, nat.pred_succ] },
+      { rw [shift_le (nat.succ_le_succ h₂), nat.pred_succ,
+            subst_lt (nat.lt_add_right _ _ _ h₁), nat.succ_add,
+            shift_le h₂, nat.pred_succ] } } },
+  case app : l r ihl ihr { unfold shift subst, rw [ihl, ihr] },
+  case lam : t e iht ihe { unfold shift subst, rw [iht, ← nat.add_succ, ihe],  },
+  case pi : t₁ t₂ iht₁ iht₂ { unfold shift subst, rw [iht₁, ← nat.add_succ, iht₂] } }
 
-lemma gap_subs_below (e e' n m) : e ⟦nat.succ n ↟ m⟧ ⟦0 ↦ e' ⟦n ↟ m⟧⟧ = e ⟦0 ↦ e'⟧ ⟦n ↟ m⟧ :=
-  gap_subs_below_ind e e' 0 n m
+lemma shift_subst_below (e e' n m) : e ⟦nat.succ n ↟ m⟧ ⟦0 ↦ e' ⟦n ↟ m⟧⟧ = e ⟦0 ↦ e'⟧ ⟦n ↟ m⟧ :=
+  shift_subst_below_ind e e' 0 n m
 
 /- How `sub` interacts with itself. -/
 
-lemma subs_subs_ind (e e₁ e₂ k n) : e ⟦k ↦ e₁⟧ ⟦(n + k) ↦ e₂⟧ = e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k ↦ e₁ ⟦n ↦ e₂⟧⟧ := by
+lemma subst_subst_ind (e e₁ e₂ k n) : e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦k ↦ e₁⟧ ⟦(n + k) ↦ e₂⟧ := by
 { induction e generalizing e₁ e₂ k n,
-  case sort : s { unfold subs },
+  case sort : s { unfold subst },
   case var : v
-  { cases v, swap, { unfold subs },
+  { cases v, swap, { unfold subst },
     rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
-    { rw [subs_bound_v_lt_n h₁,
-          subs_bound_v_lt_n (nat.lt_add_left _ _ _ h₁),
-          subs_bound_v_lt_n (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
-          subs_bound_v_lt_n h₁] },
+    { rw [subst_gt h₁,
+          subst_gt (nat.lt_add_left _ _ _ h₁),
+          subst_gt (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
+          subst_gt h₁] },
     { rw [← h₁,
-          subs_bound_eq,
-          subs_bound_v_lt_n (nat.lt_succ_of_le (nat.le_add_left' _ _ _ (nat.le_refl v))),
-          subs_bound_eq, nat.add_comm,
-          gap_subs_above _ _ _ _] },
+          subst_eq,
+          subst_gt (nat.lt_succ_of_le (nat.le_add_left' _ _ _ (nat.le_refl v))),
+          subst_eq, nat.add_comm,
+          shift_subst_above _ _ _ _] },
     { cases v, { exfalso, exact nat.not_lt_zero _ h₁ },
       rcases (nat.lt_trichotomy v (n + k)) with h₂ | h₂ | h₂,
-      { rw [subs_bound_n_lt_v h₁, nat.pred_succ,
-            subs_bound_v_lt_n h₂,
-            subs_bound_v_lt_n (nat.succ_lt_succ h₂),
-            subs_bound_n_lt_v h₁, nat.pred_succ] },
+      { rw [subst_lt h₁, nat.pred_succ,
+            subst_gt h₂,
+            subst_gt (nat.succ_lt_succ h₂),
+            subst_lt h₁, nat.pred_succ] },
       { rw [← h₂,
-            subs_bound_n_lt_v h₁, nat.pred_succ,
-            subs_bound_eq,
-            subs_bound_eq, h₂, nat.add_comm,
-            gap_subs_inside] },
-      { rw [subs_bound_n_lt_v h₁, nat.pred_succ,
-            subs_bound_n_lt_v h₂,
-            subs_bound_n_lt_v (nat.succ_lt_succ h₂), nat.pred_succ,
-            subs_bound_n_lt_v (nat.order_aux_2 h₂)] } } },
-  case app : l r ihl ihr { unfold subs, rw [ihl, ihr] },
-  case lam : t e iht ihe { unfold subs, rw iht, simp, exact ihe _ _ _ _ },
-  case pi : t₁ t₂ iht₁ iht₂ { unfold subs, rw iht₁, simp, exact iht₂ _ _ _ _ } }
+            subst_lt h₁, nat.pred_succ,
+            subst_eq,
+            subst_eq, h₂, nat.add_comm,
+            shift_subst_inside] },
+      { rw [subst_lt h₁, nat.pred_succ,
+            subst_lt h₂,
+            subst_lt (nat.succ_lt_succ h₂), nat.pred_succ,
+            subst_lt (nat.order_aux_2 h₂)] } } },
+  case app : l r ihl ihr { unfold subst, rw [ihl, ihr] },
+  case lam : t e iht ihe { unfold subst, rw [iht, ← nat.add_succ, ihe] },
+  case pi : t₁ t₂ iht₁ iht₂ { unfold subst, rw [iht₁, ← nat.add_succ, iht₂] } }
 
-lemma subs_subs (e e₁ e₂ n) : e ⟦0 ↦ e₁⟧ ⟦n ↦ e₂⟧ = e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ ⟦n ↦ e₂⟧⟧ :=
-  subs_subs_ind e e₁ e₂ 0 n
+lemma subst_subst (e e₁ e₂ n) : e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦0 ↦ e₁⟧ ⟦n ↦ e₂⟧ :=
+  subst_subst_ind e e₁ e₂ 0 n
 
 /- Uninteresting `size` lemmas to support strong induction on `expr`. -/
 
@@ -285,130 +273,132 @@ open expr
 
 /- Main part. -/
 
-/-- The "one-step reduction" relation `red1 e₁ e₂`: "`e₁` reduces to `e₂` by contracting zero or more immediate redexes."
+/-- The "one-step reduction" relation `red_1 e₁ e₂`:
+    "`e₁` reduces to `e₂` by contracting zero or more immediate redexes."
     See: https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf -/
-inductive red1 : expr → expr → Prop
-| red1_beta {t e e' r r'}   : red1 e e' → red1 r r' →     red1 (app (lam t e) r) (e'⟦0 ↦ r'⟧)
-| red1_sort {s}             :                             red1 (sort s) (sort s)
-| red1_var  {v}             :                             red1 (var v) (var v)
-| red1_app  {l l' r r'}     : red1 l l' → red1 r r' →     red1 (app l r) (app l' r')
-| red1_lam  {t t' e e'}     : red1 t t' → red1 e e' →     red1 (lam t e) (lam t' e')
-| red1_pi   {t₁ t₁' t₂ t₂'} : red1 t₁ t₁' → red1 t₂ t₂' → red1 (pi t₁ t₂) (pi t₁' t₂')
-open red1
+inductive red_1 : expr → expr → Prop
+| r1_beta {t e e' r r'}   : red_1 e e' → red_1 r r' →     red_1 (app (lam t e) r) (e'⟦0 ↦ r'⟧)
+| r1_sort {s}             :                               red_1 (sort s) (sort s)
+| r1_var  {v}             :                               red_1 (var v) (var v)
+| r1_app  {l l' r r'}     : red_1 l l' → red_1 r r' →     red_1 (app l r) (app l' r')
+| r1_lam  {t t' e e'}     : red_1 t t' → red_1 e e' →     red_1 (lam t e) (lam t' e')
+| r1_pi   {t₁ t₁' t₂ t₂'} : red_1 t₁ t₁' → red_1 t₂ t₂' → red_1 (pi t₁ t₂) (pi t₁' t₂')
+open red_1
 
-local notation e ` ~>₁ ` e' := red1 e e'
+local notation e ` ~>₁ ` e'       := red_1 e e'
 
-lemma red1_refl {e} : e ~>₁ e :=
+lemma red_1_refl {e} : e ~>₁ e :=
   @expr.rec_on (λ e, e ~>₁ e) e
-    (λ _, red1_sort) (λ _, red1_var) (λ _ _, red1_app) (λ _ _, red1_lam) (λ _ _, red1_pi)
+    (λ _, r1_sort) (λ _, r1_var) (λ _ _, r1_app) (λ _ _, r1_lam) (λ _ _, r1_pi)
 
-lemma red1_gap_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦k ↟ n⟧ := by
+lemma red_1_shift_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦k ↟ n⟧ := by
 { -- Strong induction on `e` generalising `e' k h`.
-  revert_after e, apply size_wf.induction e, intros e ih,
+  revert_after e, apply size_wf.induction e, intros e ih, intros,
   cases e,
-  case sort : s { intros, cases h, unfold gap, exact red1_refl },
-  case var : v { intros, cases h, cases v; split_ifs <|> skip; exact red1_refl },
+  case sort : s { cases h, unfold shift, exact red_1_refl },
+  case var : v { cases h, cases v; split_ifs <|> skip; exact red_1_refl },
   case app : l r
-  { intros,
-    cases h,
-    case red1_beta : t e e' r r' he hr
-    { unfold gap, rw ← gap_subs_below,
-      refine red1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
+  { cases h,
+    case r1_beta : t e e' r r' he hr
+    { unfold shift, rw ← shift_subst_below,
+      refine r1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_lam_e, size_lt_size_app_r] },
-    case red1_app : l l' r r' hl hr
-    { unfold gap, refine red1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
+    case r1_app : l l' r r' hl hr
+    { unfold shift, refine r1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_l, size_lt_size_app_r] } },
   case lam : t e
-  { intros, cases h, unfold gap,
-    refine red1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
+  { cases h, unfold shift,
+    refine r1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
     exacts [size_lt_size_lam_l, size_lt_size_lam_r] },
   case pi : t₁ t₂
-  { intros, cases h, unfold gap,
-    refine red1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
+  { cases h, unfold shift,
+    refine r1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
     exacts [size_lt_size_pi_l, size_lt_size_pi_r] } }
 
-lemma red1_gap (n) {e e'} (h : e ~>₁ e') : e ⟦0 ↟ n⟧ ~>₁ e' ⟦0 ↟ n⟧ :=
-  red1_gap_ind n e e' 0 h
+lemma red_1_shift (n) {e e'} (h : e ~>₁ e') : e ⟦0 ↟ n⟧ ~>₁ e' ⟦0 ↟ n⟧ :=
+  red_1_shift_ind n e e' 0 h
 
-lemma red1_subs_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l ⟦k ↦ r⟧ ~>₁ l' ⟦k ↦ r'⟧ := by
-{ revert_all, intros l₀ l₀' hl₀ r₀ r₀' hr₀ k,
-  -- Strong induction on `l₀` generalising `l₀' hl₀ r₀ r₀' hr₀ k`.
-  revert_after l₀, apply size_wf.induction l₀, intros l₀ ih,
+lemma red_1_subst_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l ⟦k ↦ r⟧ ~>₁ l' ⟦k ↦ r'⟧ := by
+{ -- Strong induction on `l₀` generalising `l₀' hl₀ r₀ r₀' hr₀ k`.
+  revert_after l, apply size_wf.induction l, intros l₀ ih l₀' hl₀ r₀ r₀' hr₀ k,
   cases l₀,
-  case sort : s { intros, cases hl₀, unfold subs, exact red1_sort },
+  case sort : s { cases hl₀, unfold subst, exact r1_sort },
   case var : v
-  { intros, cases v; cases hl₀; unfold subs, swap, apply red1_var,
-    split_ifs; exact red1_refl <|> skip,
-    exact red1_gap k hr₀ },
+  { cases v; cases hl₀; unfold subst, swap, apply r1_var,
+    split_ifs; exact red_1_refl <|> skip,
+    exact red_1_shift k hr₀ },
   case app : l r
-  { intros,
-    cases hl₀,
-    case red1_beta : t e e' r r' he hr
-    { unfold subs, rw subs_subs,
-      refine red1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
+  { cases hl₀,
+    case r1_beta : t e e' r r' he hr
+    { unfold subst, rw ← subst_subst,
+      refine r1_beta (ih e _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_lam_e, size_lt_size_app_r] },
-    case red1_app : l l' r r' hl hr
-    { unfold subs,
-      refine red1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
+    case r1_app : l l' r r' hl hr
+    { unfold subst,
+      refine r1_app (ih l _ _ _ _) (ih r _ _ _ _), assumption',
       exacts [size_lt_size_app_l, size_lt_size_app_r] } },
   case lam : t e
-  { intros, cases hl₀, unfold subs,
-    refine red1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
+  { cases hl₀, unfold subst,
+    refine r1_lam (ih t _ _ _ _) (ih e _ _ _ _), assumption',
     exacts [size_lt_size_lam_l, size_lt_size_lam_r] },
   case pi : t₁ t₂
-  { intros, cases hl₀, unfold subs,
-    refine red1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
+  { cases hl₀, unfold subst,
+    refine r1_pi (ih t₁ _ _ _ _) (ih t₂ _ _ _ _), assumption',
     exacts [size_lt_size_pi_l, size_lt_size_pi_r] } }
 
-lemma red1_subs {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') : l ⟦0 ↦ r⟧ ~>₁ l' ⟦0 ↦ r'⟧ :=
-  red1_subs_ind hl hr 0
+lemma red_1_subst {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') : l ⟦0 ↦ r⟧ ~>₁ l' ⟦0 ↦ r'⟧ :=
+  red_1_subst_ind hl hr 0
 
-lemma red1_confluent {a b c} (hb : a ~>₁ b) (hc : a ~>₁ c) :
-  ∃ d, (b ~>₁ d) ∧ (c ~>₁ d) := by
+lemma red_1_confluent {a b c} (hb : a ~>₁ b) (hc : a ~>₁ c) : ∃ d, (b ~>₁ d) ∧ (c ~>₁ d) := by
 { -- Strong induction on `a` generalising `b c hb hc`.
-  revert_after a, apply size_wf.induction a, intros a ih,
+  revert_after a, apply size_wf.induction a, intros a ih, intros,
   cases a,
-  case sort : s { intros, cases hb, cases hc, use (sort s), exact ⟨red1_sort, red1_sort⟩, },
-  case var : v { intros, cases hb, cases hc, use (var v), exact ⟨red1_var, red1_var⟩ },
+  case sort : s { cases hb, cases hc, use (sort s), exact ⟨r1_sort, r1_sort⟩, },
+  case var : v { cases hb, cases hc, use (var v), exact ⟨r1_var, r1_var⟩ },
   case app : l r
-  { intros,
-    cases hb,
-    case red1_beta : t e eb r rb heb hrb
+  { cases hb,
+    case r1_beta : t e eb r rb heb hrb
     { cases hc,
-      case red1_beta : t e ec r rc hec hrc
+      case r1_beta : t e ec r rc hec hrc
       { rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
         rcases (ih r size_lt_size_lam_r hrb hrc) with ⟨r', _, _⟩,
-        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_subs _ _, red1_subs _ _⟩, assumption' },
-      case red1_app : tec r rc htec hrc
+        use (e' ⟦0 ↦ r'⟧), refine ⟨red_1_subst _ _, red_1_subst _ _⟩, assumption' },
+      case r1_app : tec r rc htec hrc
       { rcases htec with _ | _ | _ | _ | @⟨t, tc, e, ec, htc, hec⟩ | _,
         rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
         rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
-        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_subs _ _, red1_beta _ _⟩, assumption' } },
-    case red1_app : te teb r rb hteb hrb
+        use (e' ⟦0 ↦ r'⟧), refine ⟨red_1_subst _ _, r1_beta _ _⟩, assumption' } },
+    case r1_app : te teb r rb hteb hrb
     { cases hc,
-      case red1_beta : t e ec r rc hec hrc
+      case r1_beta : t e ec r rc hec hrc
       { rcases hteb with _ | _ | _ | _ | @⟨t, tb, e, eb, htb, heb⟩ | _,
         rcases (ih e size_lt_size_app_lam_e heb hec) with ⟨e', _, _⟩,
         rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
-        use (e' ⟦0 ↦ r'⟧), refine ⟨red1_beta _ _, red1_subs _ _⟩, assumption' },
-      case red1_app : l lc r rc hlc hrc
+        use (e' ⟦0 ↦ r'⟧), refine ⟨r1_beta _ _, red_1_subst _ _⟩, assumption' },
+      case r1_app : l lc r rc hlc hrc
       { rcases (ih l size_lt_size_app_l hteb hlc) with ⟨l', _, _⟩,
         rcases (ih r size_lt_size_app_r hrb hrc) with ⟨r', _, _⟩,
-        use (app l' r'), refine ⟨red1_app _ _, red1_app _ _⟩, assumption' } } },
+        use (app l' r'), refine ⟨r1_app _ _, r1_app _ _⟩, assumption' } } },
   case lam : l r
-  { intros,
-    rcases hb with _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩ | _,
+  { rcases hb with _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩ | _,
     rcases hc with _ | _ | _ | _ | @⟨l, lc, r, rc, hlc, hrc⟩ | _,
     rcases (ih l size_lt_size_lam_l hlb hlc) with ⟨l', _, _⟩,
     rcases (ih r size_lt_size_lam_r hrb hrc) with ⟨r', _, _⟩,
-    use (lam l' r'), refine ⟨red1_lam _ _, red1_lam _ _⟩, assumption' },
+    use (lam l' r'), refine ⟨r1_lam _ _, r1_lam _ _⟩, assumption' },
   case pi : l r
-  { intros,
-    rcases hb with _ | _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩,
+  { rcases hb with _ | _ | _ | _ | _ | @⟨l, lb, r, rb, hlb, hrb⟩,
     rcases hc with _ | _ | _ | _ | _ | @⟨l, lc, r, rc, hlc, hrc⟩,
     rcases (ih l size_lt_size_pi_l hlb hlc) with ⟨l', hl₁, hl₂⟩,
     rcases (ih r size_lt_size_pi_r hrb hrc) with ⟨r', hr₁, hr₂⟩,
-    use (pi l' r'), refine ⟨red1_pi _ _, red1_pi _ _⟩, assumption' } }
+    use (pi l' r'), refine ⟨r1_pi _ _, r1_pi _ _⟩, assumption' } }
+
+/-- Transitive closure of `red_1`. -/
+inductive red_n : nat → expr → expr → Prop
+| rn_refl {e}          :                                 red_n 0 e e
+| rn_step {n e₁ e₂ e₃} : red_n n e₁ e₂ → (red_1 e₂ e₃) → red_n (nat.succ n) e₁ e₃
+open red_n
+
+local notation e ` ~>⟦` n `⟧ ` e' := red_n n e e'
 
 end
 end coc

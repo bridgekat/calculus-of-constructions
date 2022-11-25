@@ -12,7 +12,7 @@ def imax : nat → nat → nat
 | _ 0 := 0
 | a b := max a b
 
-/-- Size measure for strong structural induction. -/
+/-- Size measure for strong induction. -/
 def expr.size : expr → nat
 | (sort s)   := 1
 | (var v)    := 1
@@ -20,49 +20,35 @@ def expr.size : expr → nat
 | (lam t e)  := (t.size + e.size).succ
 | (pi t₁ t₂) := (t₁.size + t₂.size).succ
 
-/-- Three-way comparison operator. -/
-inductive threeway (m n : nat) : Prop
-| lt : m < n → threeway
-| eq : m = n → threeway
-| gt : n < m → threeway
-
+/-- Lift variables with level ≥ `n` by `m` levels. -/
 @[irreducible]
-def threeway_cmp (m n : nat) : threeway m n :=
-  dite (m < n) threeway.lt
-    (dite (m = n) (λ h _, threeway.eq h)
-      (λ h₁ h₂, threeway.gt
-        (nat.lt_of_le_and_ne (le_of_not_lt h₂)
-          (λ h : n = m, (h₁ h.symm)))))
-
-/-- Lift overflow variables by `m` levels. -/
-@[irreducible]
-def expr.gap : expr → nat → nat → expr
+def expr.shift : expr → nat → nat → expr
 | (sort s)        n m := sort s
 | (var (bound b)) n m :=
   if n <= b then var (bound (b + m))
   else var (bound b)
 | (var (free f))  n m := var (free f)
-| (app l r)       n m := app (expr.gap l n m) (expr.gap r n m)
-| (lam t e)       n m := lam (expr.gap t n m) (expr.gap e n.succ m)
-| (pi t₁ t₂)      n m := pi (expr.gap t₁ n m) (expr.gap t₂ n.succ m)
+| (app l r)       n m := app (expr.shift l n m) (expr.shift r n m)
+| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e n.succ m)
+| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ n.succ m)
 
-/-- Replace one overflow variable by an expression
+/-- Replace all variables at level = `n` by an expression `e'`
     (when deleting the outermost layer of binder). -/
 @[irreducible]
-def expr.subs : expr → nat → expr → expr
+def expr.subst : expr → nat → expr → expr
 | (sort s)        n e' := sort s
 | (var (bound b)) n e' :=
-  if n < b then var (bound b.pred)
-  else if n = b then e'.gap 0 n
+  if n < b then var (bound (nat.pred b))
+  else if n = b then expr.shift e' 0 n
   else (var (bound b))
 | (var (free f))  n e' := var (free f)
-| (app l r)       n e' := app (expr.subs l n e') (expr.subs r n e')
-| (lam t e)       n e' := lam (expr.subs t n e') (expr.subs e n.succ e')
-| (pi t₁ t₂)      n e' := pi (expr.subs t₁ n e') (expr.subs t₂ n.succ e')
+| (app l r)       n e' := app (expr.subst l n e') (expr.subst r n e')
+| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e n.succ e')
+| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ n.succ e')
 
 /-- Small-step reduction rules. -/
 inductive small : expr → expr → Prop
-| s_beta      {t e r}     : small (app (lam t e) r) (e.subs 0 r)
+| s_beta      {t e r}     : small (app (lam t e) r) (e.subst 0 r)
 | s_app_left  {l l' r}    : small l l' →   small (app l r) (app l' r)
 | s_app_right {l r r'}    : small r r' →   small (app l r) (app l r')
 | s_lam_left  {t t' e}    : small t t' →   small (lam t e) (lam t' e)
@@ -95,7 +81,7 @@ inductive has_type : ctx → expr → expr → Prop
 | t_app {Γ l r t₁ t₂} :
   has_type Γ l (pi t₁ t₂) →
   has_type Γ r t₁ →
-  has_type Γ (app l r) (t₂.subs 0 r)
+  has_type Γ (app l r) (expr.subst t₂ 0 r)
 | t_lam {Γ t₁ t₂ s e} :
   has_type Γ (pi t₁ t₂) (sort s) →
   has_type (t₁ :: Γ) e t₂ →
@@ -121,7 +107,7 @@ meta def expr.reduce : expr → expr
   let l := l.reduce,
       r := r.reduce
   in match l with
-  | (lam t e) := (e.subs 0 r).reduce
+  | (lam t e) := (expr.subst e 0 r).reduce
   | _         := app l r
   end
 | (lam t e)  := lam t.reduce e.reduce
