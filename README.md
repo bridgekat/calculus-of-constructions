@@ -1,4 +1,4 @@
-Confluence result can be found in [`lemmas.lean`](https://github.com/bridgekat/calculus-of-constructions/blob/main/src/lemmas.lean).
+Proof of confluence and unique typing can be found in [`lemmas.lean`](https://github.com/bridgekat/calculus-of-constructions/blob/main/src/lemmas.lean).
 
 ## Details
 
@@ -14,7 +14,7 @@ inductive expr : Type
 open expr
 ```
 
-where `idx` denotes standard de Bruijn indices.
+where `idx` denote standard de Bruijn indices.
 
 Single-variable substitution is defined as
 
@@ -27,8 +27,8 @@ def expr.shift : expr → nat → nat → expr
   else var (bound b)
 | (var (free f))  n m := var (free f)
 | (app l r)       n m := app (expr.shift l n m) (expr.shift r n m)
-| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e n.succ m)
-| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ n.succ m)
+| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e (nat.succ n) m)
+| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ (nat.succ n) m)
 
 /-- Replace all variables at level = `n` by an expression `e'`
     (when deleting the outermost layer of binder). -/
@@ -40,8 +40,8 @@ def expr.subst : expr → nat → expr → expr
   else (var (bound b))
 | (var (free f))  n e' := var (free f)
 | (app l r)       n e' := app (expr.subst l n e') (expr.subst r n e')
-| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e n.succ e')
-| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ n.succ e')
+| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e (nat.succ n) e')
+| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ (nat.succ n) e')
 ```
 
 (...this is definitely far from the optimal formalisation, especially in comparison with [Autosubst.](https://www.ps.uni-saarland.de/Publications/documents/SchaeferEtAl_2015_Autosubst_-Reasoning.pdf))
@@ -51,7 +51,7 @@ Reduction rules considered:
 ```lean
 /-- Small-step reduction rules. -/
 inductive small : expr → expr → Prop
-| s_beta      {t e r}     : small (app (lam t e) r) (e.subst 0 r)
+| s_beta      {t e r}     : small (app (lam t e) r) (expr.subst e 0 r)
 | s_app_left  {l l' r}    : small l l' →   small (app l r) (app l' r)
 | s_app_right {l r r'}    : small r r' →   small (app l r) (app l r')
 | s_lam_left  {t t' e}    : small t t' →   small (lam t e) (lam t' e)
@@ -61,10 +61,10 @@ inductive small : expr → expr → Prop
 
 /-- Transitive closure of small-step reduction rules. -/
 inductive small_star : expr → expr → Prop
-| ss_refl {e}        :                                    small_star e e
-| ss_step {e₁ e₂ e₃} : small_star e₁ e₂ → (small e₂ e₃) → small_star e₁ e₃
+| ss_refl {e}        :                                  small_star e e
+| ss_step {e₁ e₂ e₃} : small_star e₁ e₂ → small e₂ e₃ → small_star e₁ e₃
 ```
 
 ## References
 
-This proof uses the Tait and Martin-Löf technique as described in [An Intuitionistic Theory of Types](https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf).
+Confluence proof follows the Tait and Martin-Löf technique as described in [An Intuitionistic Theory of Types](https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf).

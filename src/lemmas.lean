@@ -1,4 +1,5 @@
 import tactic
+import tactic.induction
 import data.prod.lex
 import expr
 
@@ -9,8 +10,8 @@ section
 
 set_option pp.structure_projections false
 
-local notation e ` ⟦` n ` ↦ ` e' `⟧`  := expr.subst e n e'
-local notation e ` ⟦` n ` ↟ ` m `⟧`   := expr.shift e n m
+local notation e ` ⟦` n ` ↦ ` e' `⟧` := expr.subst e n e'
+local notation e ` ⟦` n ` ↟ ` m `⟧`  := expr.shift e n m
 
 /- Auxiliary arithmetic lemmas. -/
 
@@ -255,6 +256,7 @@ lemma red_1_refl {e} : e ~>₁ e :=
   @expr.rec_on (λ e, e ~>₁ e) e
     (λ _, r1_sort) (λ _, r1_var) (λ _ _, r1_app) (λ _ _, r1_lam) (λ _ _, r1_pi)
 
+/-- Shifting respects one-step reduction. -/
 lemma red_1_shift_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦k ↟ n⟧ := by
 { -- Strong induction on `e` generalising `e' k h`.
   revert_after e, apply size_wf.induction e, intros e ih, intros,
@@ -282,6 +284,7 @@ lemma red_1_shift_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' ⟦
 lemma red_1_shift (n) {e e'} (h : e ~>₁ e') : e ⟦0 ↟ n⟧ ~>₁ e' ⟦0 ↟ n⟧ :=
   red_1_shift_ind n e e' 0 h
 
+/-- Substitution respects one-step reduction. -/
 lemma red_1_subst_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l ⟦k ↦ r⟧ ~>₁ l' ⟦k ↦ r'⟧ := by
 { -- Strong induction on `l₀` generalising `l₀' hl₀ r₀ r₀' hr₀ k`.
   revert_after l, apply size_wf.induction l, intros l₀ ih l₀' hl₀ r₀ r₀' hr₀ k,
@@ -364,6 +367,39 @@ inductive red_n : nat → expr → expr → Prop
 open red_n
 
 local notation e ` ~>⟦` n `⟧ ` e' := red_n n e e'
+
+lemma red_n_refl {e} : e ~>⟦0⟧ e :=
+  rn_refl
+
+lemma red_n_trans {n m e₁ e₂ e₃} (h₁ : e₁ ~>⟦n⟧ e₂) (h₂ : e₂ ~>⟦m⟧ e₃) : (e₁ ~>⟦n + m⟧ e₃) := by
+{ induction m with m ih generalizing e₃,
+  { cases h₂, exact h₁ },
+  { rcases h₂ with _ | ⟨h₂₁, h₂₂⟩, exact rn_step (ih h₂₁) h₂₂ } }
+
+/-- Shifting respects n-step reduction. -/
+lemma red_n_shift_ind {n e e'} (h : e ~>⟦n⟧ e') (s k) : e ⟦k ↟ s⟧ ~>⟦n⟧ e' ⟦k ↟ s⟧ := by
+{ induction n with n ih generalizing e',
+  { cases h, exact rn_refl },
+  { rcases h with _ | ⟨h₁, h₂⟩, exact rn_step (ih h₁) (red_1_shift_ind _ _ _ _ h₂), } }
+
+lemma red_n_shift {n e e'} (h : e ~>⟦n⟧ e') (s): e ⟦0 ↟ s⟧ ~>⟦n⟧ e' ⟦0 ↟ s⟧ :=
+  red_n_shift_ind h s 0
+
+/-- Substitution respects n-step reduction. -/
+lemma red_n_subst_ind {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') (k) : l ⟦k ↦ r⟧ ~>⟦n + m⟧ l' ⟦k ↦ r'⟧ := by
+{ induction n with n ih generalizing l',
+  { cases hl,
+    rw nat.zero_add,
+    induction m with m ih generalizing r',
+    { cases hr, exact rn_refl },
+    { rcases hr with _ | ⟨hr₁, hr₂⟩,
+      refine rn_step (ih hr₁) (red_1_subst_ind red_1_refl hr₂ _) } },
+  { rcases hl with _ | ⟨hl₁, hl₂⟩,
+    rw nat.succ_add,
+    refine rn_step (ih hl₁) (red_1_subst_ind hl₂ red_1_refl _) } }
+
+lemma red_n_subst {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') : l ⟦0 ↦ r⟧ ~>⟦n + m⟧ l' ⟦0 ↦ r'⟧ :=
+  red_n_subst_ind hl hr 0
 
 /- Main part. -/
 namespace red_n_confluent
@@ -601,9 +637,14 @@ open small
 open small_star
 open small_eq
 
-local notation e ` ~> ` e'            := small e e'
-local notation e ` ~>* ` e'           := small_star e e'
-local notation e ` ~~ ` e'            := small_eq e e'
+local notation e ` ~> ` e'  := small e e'
+local notation e ` ~>* ` e' := small_star e e'
+local notation e ` ~~ ` e'  := small_eq e e'
+
+/- Reduction lemmas. -/
+
+instance coe_small_star_of_small {e₁ e₂} : has_coe (small e₁ e₂) (small_star e₁ e₂) := ⟨ss_step ss_refl⟩
+instance coe_small_eq_of_small {e₁ e₂} : has_coe (small e₁ e₂) (small_eq e₁ e₂) := ⟨se_step⟩
 
 lemma small_star_refl (e) : e ~>* e :=
   ss_refl
@@ -613,32 +654,20 @@ lemma small_star_trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* 
   case ss_refl : _ { exact h₁ },
   case ss_step : _ _ _ _ h₂ ih { exact ss_step (ih h₁) h₂ } }
 
-lemma small_star_app_left {l l'} (r) (h : l ~>* l') : app l r ~>* app l' r :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_left h₂))
-
-lemma small_star_app_right {r r'} (l) (h : r ~>* r') : app l r ~>* app l r' :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_right h₂))
-
 lemma small_star_app {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : app l r ~>* app l' r' :=
-  small_star_trans (small_star_app_left r hl) (small_star_app_right l' hr)
-
-lemma small_star_lam_left {l l'} (r) (h : l ~>* l') : lam l r ~>* lam l' r :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_left h₂))
-
-lemma small_star_lam_right {r r'} (l) (h : r ~>* r') : lam l r ~>* lam l r' :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_right h₂))
+  @small_star_trans (app l r) (app l' r) (app l' r')
+    (small_star.rec_on hl (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_left h₂)))
+    (small_star.rec_on hr (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_right h₂)))
 
 lemma small_star_lam {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : lam l r ~>* lam l' r' :=
-  small_star_trans (small_star_lam_left r hl) (small_star_lam_right l' hr)
-
-lemma small_star_pi_left {l l'} (r) (h : l ~>* l'): pi l r ~>* pi l' r :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_left h₂))
-
-lemma small_star_pi_right {r r'} (l) (h : r ~>* r'): pi l r ~>* pi l r' :=
-  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_right h₂))
+  @small_star_trans (lam l r) (lam l' r) (lam l' r')
+    (small_star.rec_on hl (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_left h₂)))
+    (small_star.rec_on hr (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_right h₂)))
 
 lemma small_star_pi {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : pi l r ~>* pi l' r' :=
-  small_star_trans (small_star_pi_left r hl) (small_star_pi_right l' hr)
+  @small_star_trans (pi l r) (pi l' r) (pi l' r')
+    (small_star.rec_on hl (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_left h₂)))
+    (small_star.rec_on hr (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_right h₂)))
 
 /- Equivalence of formulations. -/
 
@@ -661,7 +690,7 @@ lemma red_n_of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : ∃ n, (e₁ ~>⟦n�
 lemma small_star_of_red_1 {e₁ e₂} (h : e₁ ~>₁ e₂) : e₁ ~>* e₂ := by
 { induction h,
   case r1_beta : t _ _ _ _ _ _ ihe ihr
-  { exact ss_step (small_star_app (small_star_lam_right t ihe) ihr) s_beta, },
+  { exact ss_step (small_star_app (small_star_lam (small_star_refl _) ihe) ihr) s_beta, },
   case r1_sort : _ { exact small_star_refl _ },
   case r1_var : _ { exact small_star_refl _ },
   case r1_app : _ _ _ _ _ _ ihl ihr { exact small_star_app ihl ihr },
@@ -672,6 +701,22 @@ lemma small_star_of_red_n {e₁ e₂ n} (h : e₁ ~>⟦n⟧ e₂) : e₁ ~>* e�
 { induction h,
   case rn_refl : e { exact small_star_refl _ },
   case rn_step : n e₁ e₂ e₃ h₁ h₂ ih { exact small_star_trans ih (small_star_of_red_1 h₂), } }
+
+/-- Shifting respects small-step reduction. -/
+lemma small_star_shift_ind {e e'} (h : e ~>* e') (s k) : e ⟦k ↟ s⟧ ~>* e' ⟦k ↟ s⟧ :=
+  let ⟨n, hn⟩ := red_n_of_small_star h in small_star_of_red_n (red_n_shift_ind hn s k)
+
+lemma small_star_shift {e e'} (h : e ~>* e') (s): e ⟦0 ↟ s⟧ ~>* e' ⟦0 ↟ s⟧ :=
+  small_star_shift_ind h s 0
+
+/-- Substitution respects small-step reduction. -/
+lemma small_star_subst_ind {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') (k) : l ⟦k ↦ r⟧ ~>* l' ⟦k ↦ r'⟧ :=
+  let ⟨nl, hnl⟩ := red_n_of_small_star hl,
+      ⟨nr, hnr⟩ := red_n_of_small_star hr in
+    small_star_of_red_n (red_n_subst_ind hnl hnr k)
+
+lemma small_star_subst {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') : l ⟦0 ↦ r⟧ ~>* l' ⟦0 ↦ r'⟧ :=
+  small_star_subst_ind hl hr 0
 
 /-- Confluence of small-step reduction. -/
 lemma small_star_confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>* d) ∧ (c ~>* d) :=
@@ -703,21 +748,32 @@ lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_nor
 
 /- Definitional equality lemmas. -/
 
-lemma small_eq_refl (e) : e ~~ e :=
-  se_refl
+lemma small_eq_refl (e) : e ~~ e := se_refl
+lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ := se_symm h
+lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) := se_trans h₁ h₂
 
-lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ :=
-  se_symm h
+lemma small_eq_app {l l' r r'} (hl : l ~~ l') (hr : r ~~ r') : app l r ~~ app l' r' :=
+  @small_eq_trans (app l r) (app l' r) (app l' r')
+    (small_eq.rec_on hl (λ _, se_refl) (λ _ _, se_step ∘ s_app_left) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
+    (small_eq.rec_on hr (λ _, se_refl) (λ _ _, se_step ∘ s_app_right) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
 
-lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) :=
-  se_trans h₁ h₂
+lemma small_eq_lam {l l' r r'} (hl : l ~~ l') (hr : r ~~ r') : lam l r ~~ lam l' r' :=
+  @small_eq_trans (lam l r) (lam l' r) (lam l' r')
+    (small_eq.rec_on hl (λ _, se_refl) (λ _ _, se_step ∘ s_lam_left) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
+    (small_eq.rec_on hr (λ _, se_refl) (λ _ _, se_step ∘ s_lam_right) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
 
+lemma small_eq_pi {l l' r r'} (hl : l ~~ l') (hr : r ~~ r') : pi l r ~~ pi l' r' :=
+  @small_eq_trans (pi l r) (pi l' r) (pi l' r')
+    (small_eq.rec_on hl (λ _, se_refl) (λ _ _, se_step ∘ s_pi_left) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
+    (small_eq.rec_on hr (λ _, se_refl) (λ _ _, se_step ∘ s_pi_right) (λ _ _ _, se_symm) (λ _ _ _ _ _, se_trans))
+
+/-- Reduction respects definitional equality. -/
 lemma small_eq_of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : e₁ ~~ e₂ :=
   small_star.rec_on h
     (λ _, se_refl)
     (λ _ _ _ _ h₂ ih, se_trans ih (se_step h₂))
 
-instance {e₁ e₂} : has_coe (small_star e₁ e₂) (small_eq e₁ e₂) :=
+instance coe_small_eq_of_small_star {e₁ e₂} : has_coe (small_star e₁ e₂) (small_eq e₁ e₂) :=
   ⟨small_eq_of_small_star⟩
 
 lemma small_eq_of_small_stars {e₁ e₂ e} (h₁ : e₁ ~>* e) (h₂ : e₂ ~>* e) : e₁ ~~ e₂ :=
@@ -738,9 +794,100 @@ lemma small_stars_of_small_eq {e₁ e₂} (h : e₁ ~~ e₂) : ∃ e, (e₁ ~>* 
 lemma small_eq_iff_small_stars {e₁ e₂} : (e₁ ~~ e₂) ↔ ∃ e, (e₁ ~>* e) ∧ (e₂ ~>* e) :=
   ⟨small_stars_of_small_eq, (λ ⟨e, he₁, he₂⟩, small_eq_of_small_stars he₁ he₂)⟩
 
+/-- Shifting respects definitional equality. -/
+lemma small_eq_shift_ind {e e'} (h : e ~~ e') (s k) : e ⟦k ↟ s⟧ ~~ e' ⟦k ↟ s⟧ :=
+  let ⟨e', h'₁, h'₂⟩ := small_stars_of_small_eq h in
+    small_eq_of_small_stars (small_star_shift_ind h'₁ _ _) (small_star_shift_ind h'₂ _ _)
 
-local notation Γ ` ⊢ ` e `: ` t       := has_type Γ e t
-local notation `⊢ ` Γ                 := lawful_ctx Γ
+lemma small_eq_shift {e e'} (h : e ~~ e') (s): e ⟦0 ↟ s⟧ ~~ e' ⟦0 ↟ s⟧ :=
+  small_eq_shift_ind h s 0
+
+/-- Substitution respects definitional equality. -/
+lemma small_eq_subst_ind {l l'} (hl : l ~~ l') {r r'} (hr : r ~~ r') (k) : l ⟦k ↦ r⟧ ~~ l' ⟦k ↦ r'⟧ :=
+  let ⟨el', hl'₁, hl'₂⟩ := small_stars_of_small_eq hl,
+      ⟨er', hr'₁, hr'₂⟩ := small_stars_of_small_eq hr in
+    small_eq_of_small_stars (small_star_subst_ind hl'₁ hr'₁ _) (small_star_subst_ind hl'₂ hr'₂ _)
+
+lemma small_eq_subst {l l'} (hl : l ~~ l') {r r'} (hr : r ~~ r') : l ⟦0 ↦ r⟧ ~~ l' ⟦0 ↦ r'⟧ :=
+  small_eq_subst_ind hl hr 0
+
+/- Universe lemmas (used in the unique typing theorem). -/
+
+lemma small_star_sort_normal {s e} (h : sort s ~>* e) : e = sort s := by
+{ induction' h, { refl }, { rcases ih with ⟨s', ih⟩, rw ih at h, cases h } }
+
+lemma small_eq_sort_inv {s s'} (h : sort s ~~ sort s') : s = s' := by
+{ rcases small_stars_of_small_eq h with ⟨e', h'⟩,
+  have hi := small_star_sort_normal h'.1,
+  have hi' := small_star_sort_normal h'.2,
+  injection (eq.trans hi.symm hi') }
+
+/- Pi lemmas (used in the unique typing theorem). -/
+
+lemma small_pi_normal {l r e} (h : pi l r ~> e) : ∃ l' r', e = pi l' r' := by
+{ cases' h, exacts [⟨e, t₂, rfl⟩, ⟨t₁, e, rfl⟩] }
+
+lemma small_star_pi_normal {l r e} (h : pi l r ~>* e) : ∃ l' r', e = pi l' r' := by
+{ induction' h,
+  { exact ⟨l, r, rfl⟩ },
+  { rcases ih with ⟨l', r', ih⟩, rw ih at h,
+    exact small_pi_normal h } }
+
+lemma small_star_pi_inv {l l' r r'} (h : pi l r ~>* pi l' r') : (l ~>* l') ∧ (r ~>* r') := by
+{ induction' h,
+  case ss_refl { exact ⟨ss_refl, ss_refl⟩ },
+  case ss_step : e₂ h₁ h₂ ih
+  { rcases small_star_pi_normal h₁ with ⟨l'', r'', h''⟩,
+    rw h'' at h₂,
+    cases' h₂,
+    { rcases ih h'' with ⟨hl, hr⟩,
+      exact ⟨ss_step hl h₂, hr⟩ },
+    { rcases ih h'' with ⟨hl, hr⟩,
+      exact ⟨hl, ss_step hr h₂⟩ } } }
+
+lemma small_eq_pi_inv {l l' r r'} (h : pi l r ~~ pi l' r') : (l ~~ l') ∧ (r ~~ r') := by
+{ rcases small_stars_of_small_eq h with ⟨e, h₁, h₂⟩,
+  rcases small_star_pi_normal h₁ with ⟨l'', r'', he⟩,
+  rw he at h₁ h₂,
+  have hi := small_star_pi_inv h₁,
+  have hi' := small_star_pi_inv h₂,
+  exact ⟨small_eq_of_small_stars hi.1 hi'.1, small_eq_of_small_stars hi.2 hi'.2⟩ }
+
+open has_type
+open lawful_ctx
+
+local notation Γ ` ▷ ` e ` : ` t := has_type Γ e t
+local notation `▷ ` Γ            := lawful_ctx Γ
+
+/-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
+lemma has_type_unique {Γ e t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e : t') : t ~~ t' := by
+{ induction h generalizing t',
+  case t_conv : Γ₁ e₁ t₁ t'₁ hc₁ ht₁ ih₁ { exact se_trans (se_symm hc₁) (ih₁ h') },
+  case t_sort : Γ₁ n₁
+  { induction' h',
+    case t_conv : _ _ _ hc₂ _ ih₂ { exact se_trans ih₂ hc₂ },
+    case t_sort : _ _ { exact se_refl } },
+  case t_var : Γ₁ n₁ t₁ ht₁
+  { induction' h',
+    case t_conv : _ _ _ h₂ _ ih₂ { exact se_trans (ih₂ ht₁) h₂ },
+    case t_var : _ _ _ h₂ { injection eq.trans ht₁.symm h₂ with ht₁, rw ht₁, exact se_refl } },
+  case t_app : Γ₁ l₁ r₁ t₁₁ t₁₂ hl₁ hr₁ ihl₁ ihr₁
+  { induction' h',
+    case t_conv : _ _ _ h₂ _ ih₂ { exact se_trans (ih₂ hl₁ hr₁ (λ _, ihl₁) (λ _, ihr₁)) h₂ },
+    case t_app : _ _ _ _ _ h₂ _ _ _ { exact small_eq_subst (small_eq_pi_inv (ihl₁ h₂)).2 se_refl } },
+  case t_lam : Γ₁ t₁₁ t₁₂ s₁ e₁ hs₁ he₁ ihs₁ ihe₁
+  { induction' h',
+    case t_conv : _ _ _ h₂ _ ih₂ { exact se_trans (ih₂ hs₁ he₁ (λ _, ihs₁) (λ _, ihe₁)) h₂ },
+    case t_lam : _ _ _ _ _ _ he₂ _ _ { exact small_eq_pi se_refl (ihe₁ he₂) } },
+  case t_pi : Γ₁ t₁₁ s₁₁ t₁₂ s₁₂ hs₁₁ hs₁₂ ihs₁₁ ihs₁₂
+  { induction' h',
+    case t_conv : _ _ _ h₂ _ ih₂ { exact se_trans (ih₂ hs₁₁ hs₁₂ (λ _, ihs₁₁) (λ _, ihs₁₂)) h₂ },
+    case t_pi : _ _ _ _ _ hs₂₁ hs₂₂ _ _
+    { rw [small_eq_sort_inv (ihs₁₁ hs₂₁), small_eq_sort_inv (ihs₁₂ hs₂₂)], exact se_refl } } }
+
+/-- Small-step reduction preserves type. -/
+lemma has_type_small {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~> e') : (Γ ▷ e' : t) := by
+{ sorry }
 
 end
 end expr

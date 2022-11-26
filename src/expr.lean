@@ -3,7 +3,6 @@ import defs
 namespace coc
 section
 
-open option
 open idx
 open expr
 
@@ -11,9 +10,9 @@ open expr
 def expr.size : expr → nat
 | (sort s)   := 1
 | (var v)    := 1
-| (app l r)  := (l.size + r.size).succ
-| (lam t e)  := (t.size + e.size).succ
-| (pi t₁ t₂) := (t₁.size + t₂.size).succ
+| (app l r)  := nat.succ (expr.size l + expr.size r)
+| (lam t e)  := nat.succ (expr.size t + expr.size e)
+| (pi t₁ t₂) := nat.succ (expr.size t₁ + expr.size t₂)
 
 /-- Lift variables with level ≥ `n` by `m` levels. -/
 @[irreducible]
@@ -24,8 +23,8 @@ def expr.shift : expr → nat → nat → expr
   else var (bound b)
 | (var (free f))  n m := var (free f)
 | (app l r)       n m := app (expr.shift l n m) (expr.shift r n m)
-| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e n.succ m)
-| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ n.succ m)
+| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e (nat.succ n) m)
+| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ (nat.succ n) m)
 
 /-- Replace all variables at level = `n` by an expression `e'`
     (when deleting the outermost layer of binder). -/
@@ -38,12 +37,12 @@ def expr.subst : expr → nat → expr → expr
   else (var (bound b))
 | (var (free f))  n e' := var (free f)
 | (app l r)       n e' := app (expr.subst l n e') (expr.subst r n e')
-| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e n.succ e')
-| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ n.succ e')
+| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e (nat.succ n) e')
+| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ (nat.succ n) e')
 
 /-- Small-step reduction rules. -/
 inductive small : expr → expr → Prop
-| s_beta      {t e r}     : small (app (lam t e) r) (e.subst 0 r)
+| s_beta      {t e r}     : small (app (lam t e) r) (expr.subst e 0 r)
 | s_app_left  {l l' r}    : small l l' →   small (app l r) (app l' r)
 | s_app_right {l r r'}    : small r r' →   small (app l r) (app l r')
 | s_lam_left  {t t' e}    : small t t' →   small (lam t e) (lam t' e)
@@ -70,9 +69,9 @@ inductive has_type : ctx → expr → expr → Prop
   has_type Γ e t →
   has_type Γ e t'
 | t_sort {Γ n} :
-  has_type Γ (sort n) (sort n.succ)
+  has_type Γ (sort n) (sort (nat.succ n))
 | t_var {Γ n t} :
-  list.nth Γ n = some t →
+  list.nth Γ n = option.some t →
   has_type Γ (var (bound n)) t
 | t_app {Γ l r t₁ t₂} :
   has_type Γ l (pi t₁ t₂) →
@@ -100,14 +99,13 @@ meta def expr.reduce : expr → expr
 | (sort s)   := sort s
 | (var v)    := var v
 | (app l r)  :=
-  let l := l.reduce,
-      r := r.reduce
-  in match l with
-  | (lam t e) := (expr.subst e 0 r).reduce
-  | _         := app l r
-  end
-| (lam t e)  := lam t.reduce e.reduce
-| (pi t₁ t₂) := pi t₁.reduce t₂.reduce
+  let l' := expr.reduce l, r' := expr.reduce r in
+    match l' with
+    | (lam t e) := expr.reduce (expr.subst e 0 r')
+    | _         := app l' r'
+    end
+| (lam t e)  := lam (expr.reduce t) (expr.reduce e)
+| (pi t₁ t₂) := pi (expr.reduce t₁) (expr.reduce t₂)
 
 end
 end coc
