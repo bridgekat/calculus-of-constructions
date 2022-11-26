@@ -53,16 +53,17 @@ inductive small : expr → expr → Prop
 
 /-- Transitive closure of small-step reduction rules. -/
 inductive small_star : expr → expr → Prop
-| ss_refl {e}        :                                    small_star e e
-| ss_step {e₁ e₂ e₃} : small_star e₁ e₂ → (small e₂ e₃) → small_star e₁ e₃
+| ss_refl {e}        :                                  small_star e e
+| ss_step {e₁ e₂ e₃} : small_star e₁ e₂ → small e₂ e₃ → small_star e₁ e₃
 
 /-- Symmetric transitive closure of small-step reduction rules. -/
 inductive small_eq : expr → expr → Prop
-| ss_refl {e}        :                                  small_eq e e
-| ss_symm {e₁ e₂}    : small_eq e₁ e₂ →                 small_eq e₂ e₁
-| ss_step {e₁ e₂ e₃} : small_eq e₁ e₂ → (small e₂ e₃) → small_eq e₁ e₃
+| se_refl  {e}        :                                   small_eq e e
+| se_step  {e₁ e₂}    : small e₁ e₂ →                     small_eq e₁ e₂
+| se_symm  {e₁ e₂}    : small_eq e₁ e₂ →                  small_eq e₂ e₁
+| se_trans {e₁ e₂ e₃} : small_eq e₁ e₂ → small_eq e₂ e₃ → small_eq e₁ e₃
 
-/-- Typing rules (without free variables). -/
+/-- Typing rules (without global environment and free variables). -/
 inductive has_type : ctx → expr → expr → Prop
 | t_conv {Γ e t t'} :
   small_eq t t' →
@@ -87,9 +88,9 @@ inductive has_type : ctx → expr → expr → Prop
   has_type Γ (pi t₁ t₂) (sort (max s₁ s₂))
 
 /-- Rules for defining well-formed local contexts. -/
-inductive ctx_wf : ctx → Prop
-| c_nil          :                                    ctx_wf []
-| c_cons {Γ t s} : ctx_wf Γ → has_type Γ t (sort s) → ctx_wf (t :: Γ)
+inductive lawful_ctx : ctx → Prop
+| c_nil          :                                        lawful_ctx []
+| c_cons {Γ t s} : lawful_ctx Γ → has_type Γ t (sort s) → lawful_ctx (t :: Γ)
 
 /-- Performs applicative-order beta-reduction.
     If the original expression is well-typed, the resulting expression will have the same type.

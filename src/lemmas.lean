@@ -11,10 +11,6 @@ set_option pp.structure_projections false
 
 local notation e ` ⟦` n ` ↦ ` e' `⟧`  := expr.subst e n e'
 local notation e ` ⟦` n ` ↟ ` m `⟧`   := expr.shift e n m
-local notation e ` ~> ` e'            := small e e'
-local notation e ` ~>* ` e'           := small_star e e'
-local notation Γ ` ⊢ ` e `: ` t       := has_type Γ e t
-local notation `⊢ ` Γ                 := ctx_wf Γ
 
 /- Auxiliary arithmetic lemmas. -/
 
@@ -603,14 +599,19 @@ lemma red_n_confluent {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : �
 
 open small
 open small_star
+open small_eq
+
+local notation e ` ~> ` e'            := small e e'
+local notation e ` ~>* ` e'           := small_star e e'
+local notation e ` ~~ ` e'            := small_eq e e'
 
 lemma small_star_refl (e) : e ~>* e :=
   ss_refl
 
 lemma small_star_trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* e₃) : (e₁ ~>* e₃) := by
 { induction h₂,
-  case ss_refl : e { exact h₁ },
-  case ss_step : e₁' e₂' e₃' h₁' h₂' ih { exact ss_step (ih h₁) h₂' } }
+  case ss_refl : _ { exact h₁ },
+  case ss_step : _ _ _ _ h₂ ih { exact ss_step (ih h₁) h₂ } }
 
 lemma small_star_app_left {l l'} (r) (h : l ~>* l') : app l r ~>* app l' r :=
   small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_left h₂))
@@ -678,6 +679,68 @@ lemma small_star_confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>*
       ⟨m, hc'⟩ := red_n_of_small_star hc in
     let ⟨d, hbd', hcd'⟩ := red_n_confluent hb' hc' in
       ⟨d, small_star_of_red_n hbd', small_star_of_red_n hcd'⟩
+
+/-- A term is in "normal form" iff there is no other term it reduces to. -/
+def is_normal (e : expr) : Prop := ∀ e', ¬ (e ~> e')
+
+lemma small_star_self_of_is_normal {e e'} (hn : is_normal e) (h: e ~>* e') : e = e' := by
+{ induction h,
+  case ss_refl : e { refl },
+  case ss_step : e₁ e₂ e₃ h₁ h₂ ih
+  { replace ih := ih hn, replace hn := hn e₃,
+    rw ih at hn, exfalso, exact hn h₂ } }
+
+/-- If a term has a normal form, it must be unique. -/
+lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_normal e₁) (h₂ : e ~>* e₂) (hn₂ : is_normal e₂) :
+  e₁ = e₂ := by
+{ rcases small_star_confluent h₁ h₂ with ⟨e', h₁', h₂'⟩,
+  cases h₁',
+  case ss_refl : _
+  { rw (small_star_self_of_is_normal hn₂ h₂') },
+  case ss_step : _ _ _ h' h''
+  { rw ← (small_star_self_of_is_normal hn₁ h') at h'',
+    exfalso, exact hn₁ _ h'' } }
+
+/- Definitional equality lemmas. -/
+
+lemma small_eq_refl (e) : e ~~ e :=
+  se_refl
+
+lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ :=
+  se_symm h
+
+lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) :=
+  se_trans h₁ h₂
+
+lemma small_eq_of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : e₁ ~~ e₂ :=
+  small_star.rec_on h
+    (λ _, se_refl)
+    (λ _ _ _ _ h₂ ih, se_trans ih (se_step h₂))
+
+instance {e₁ e₂} : has_coe (small_star e₁ e₂) (small_eq e₁ e₂) :=
+  ⟨small_eq_of_small_star⟩
+
+lemma small_eq_of_small_stars {e₁ e₂ e} (h₁ : e₁ ~>* e) (h₂ : e₂ ~>* e) : e₁ ~~ e₂ :=
+  small_eq_trans (h₁ : e₁ ~~ e) (small_eq_symm (h₂ : e₂ ~~ e))
+
+lemma small_stars_of_small_eq {e₁ e₂} (h : e₁ ~~ e₂) : ∃ e, (e₁ ~>* e) ∧ (e₂ ~>* e) := by
+{ induction h,
+  case se_refl : e { exact ⟨e, ss_refl, ss_refl⟩ },
+  case se_step : e₁ e₂ h { exact ⟨e₂, ss_step ss_refl h, ss_refl⟩, },
+  case se_symm : e₁ e₂ h ih { rcases ih with ⟨e, ih₁, ih₂⟩, refine ⟨e, ih₂, ih₁⟩ },
+  case se_trans : e₁ e₂ e₃ hb hc ihb ihc
+  { rcases ihb with ⟨b, ihb₁, ihb₂⟩,
+    rcases ihc with ⟨c, ihc₁, ihc₂⟩,
+    rcases (small_star_confluent ihb₂ ihc₁) with ⟨d, hd₁, hd₂⟩,
+    refine ⟨d, small_star_trans ihb₁ hd₁, small_star_trans ihc₂ hd₂⟩ } }
+
+/-- Two terms are definitionally equal iff they reduce to some same term. -/
+lemma small_eq_iff_small_stars {e₁ e₂} : (e₁ ~~ e₂) ↔ ∃ e, (e₁ ~>* e) ∧ (e₂ ~>* e) :=
+  ⟨small_stars_of_small_eq, (λ ⟨e, he₁, he₂⟩, small_eq_of_small_stars he₁ he₂)⟩
+
+
+local notation Γ ` ⊢ ` e `: ` t       := has_type Γ e t
+local notation `⊢ ` Γ                 := lawful_ctx Γ
 
 end
 end expr

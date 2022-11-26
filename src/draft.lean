@@ -102,5 +102,7 @@ lemma test : well_founded (nat.lt) :=
       case refl { exact ih },
       case step : y hy { apply h, exact nat.lt_of_succ_le hy } } }⟩
 
+example : true := true.intro
+
 end
 end coc
