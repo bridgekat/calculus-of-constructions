@@ -7,11 +7,6 @@ open option
 open idx
 open expr
 
-def imax : nat → nat → nat
-| 0 _ := 0
-| _ 0 := 0
-| a b := max a b
-
 /-- Size measure for strong induction. -/
 def expr.size : expr → nat
 | (sort s)   := 1
@@ -89,7 +84,7 @@ inductive has_type : ctx → expr → expr → Prop
 | t_pi {Γ t₁ s₁ t₂ s₂} :
   has_type Γ t₁ (sort s₁) →
   has_type (t₁ :: Γ) t₂ (sort s₂) →
-  has_type Γ (pi t₁ t₂) (sort (imax s₁ s₂))
+  has_type Γ (pi t₁ t₂) (sort (max s₁ s₂))
 
 /-- Rules for defining well-formed local contexts. -/
 inductive ctx_wf : ctx → Prop

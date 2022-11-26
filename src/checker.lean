@@ -34,7 +34,7 @@ meta def expr.check_rec : expr → Π (Γ Δ : ctx), string ⊕ expr
     ⟨t₁, t₂⟩  ← tl.as_pi,
     tr        ← r.check_rec Γ Δ,
     if t₁.reduce = tr.reduce
-    then return (t₂.subs 0 r)
+    then return (expr.subst t₂ 0 r)
     else sum.inl $ "argument type mismatch: " ++ t₁.show ++ " != " ++ tr.show }
 | (lam t e)   Γ Δ := do
   { t'        ← t.check_rec Γ Δ,
@@ -46,7 +46,7 @@ meta def expr.check_rec : expr → Π (Γ Δ : ctx), string ⊕ expr
     s₁        ← t'.as_sort,
     t''       ← t₂.check_rec Γ (t₁ :: Δ),
     s₂        ← t''.as_sort,
-    return (sort (imax s₁ s₂)) }
+    return (sort (max s₁ s₂)) }
 
 meta def expr.check (e : expr) (Γ : ctx) : string ⊕ expr :=
   e.check_rec Γ []

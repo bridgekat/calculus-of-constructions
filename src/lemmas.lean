@@ -5,6 +5,8 @@ import expr
 namespace coc
 section
 
+/- Notations. -/
+
 set_option pp.structure_projections false
 
 local notation e ` ⟦` n ` ↦ ` e' `⟧`  := expr.subst e n e'
@@ -241,8 +243,7 @@ lemma size_lt_size_app_lam_e {t e r} : size e < size (app (lam t e) r) :=
   nat.lt_trans size_lt_size_lam_r size_lt_size_app_l
 
 /-- The "one-step reduction" relation `red_1 e₁ e₂`:
-    "`e₁` reduces to `e₂` by contracting zero or more immediate redexes."
-    See: https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf -/
+    "`e₁` reduces to `e₂` by contracting zero or more immediate redexes." -/
 inductive red_1 : expr → expr → Prop
 | r1_beta {t e e' r r'}   : red_1 e e' → red_1 r r' →     red_1 (app (lam t e) r) (e'⟦0 ↦ r'⟧)
 | r1_sort {s}             :                               red_1 (sort s) (sort s)
@@ -252,7 +253,7 @@ inductive red_1 : expr → expr → Prop
 | r1_pi   {t₁ t₁' t₂ t₂'} : red_1 t₁ t₁' → red_1 t₂ t₂' → red_1 (pi t₁ t₂) (pi t₁' t₂')
 open red_1
 
-local notation e ` ~>₁ ` e'       := red_1 e e'
+local notation e ` ~>₁ ` e' := red_1 e e'
 
 lemma red_1_refl {e} : e ~>₁ e :=
   @expr.rec_on (λ e, e ~>₁ e) e
@@ -376,11 +377,11 @@ section
 
 -- #check to_lex
 -- #check of_lex
-#check prod.lex_wf nat.lt_wf nat.lt_wf
-#check prod.lex.lt_iff
-#check prod.lex.le_iff
-#check prod.lex.left
-#check prod.lex.right
+-- #check prod.lex_wf nat.lt_wf nat.lt_wf
+-- #check prod.lex.lt_iff
+-- #check prod.lex.le_iff
+-- #check prod.lex.left
+-- #check prod.lex.right
 
 /-- Auxiliary grid structure for proving confluence of `red_n`. -/
 structure aux (n m : nat) (a b c : expr) (grid : nat → nat → expr) (cur : nat × nat) : Prop :=
@@ -594,10 +595,89 @@ lemma final {n m a b c g} (h : aux n m a b c g (n, m)) : ∃ d, (b ~>⟦m⟧ d) 
 end
 end red_n_confluent
 
+/-- Confluence of n-step reduction. -/
 lemma red_n_confluent {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ d, (b ~>⟦m⟧ d) ∧ (c ~>⟦n⟧ d) :=
   let ⟨_, aux₁⟩ := red_n_confluent.init hb hc,
-      ⟨_, aux₂⟩ := red_n_confluent.traverse aux₁ (n, m)
-  in (red_n_confluent.final aux₂)
+      ⟨_, aux₂⟩ := red_n_confluent.traverse aux₁ (n, m) in
+    red_n_confluent.final aux₂
+
+open small
+open small_star
+
+lemma small_star_refl (e) : e ~>* e :=
+  ss_refl
+
+lemma small_star_trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* e₃) : (e₁ ~>* e₃) := by
+{ induction h₂,
+  case ss_refl : e { exact h₁ },
+  case ss_step : e₁' e₂' e₃' h₁' h₂' ih { exact ss_step (ih h₁) h₂' } }
+
+lemma small_star_app_left {l l'} (r) (h : l ~>* l') : app l r ~>* app l' r :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_left h₂))
+
+lemma small_star_app_right {r r'} (l) (h : r ~>* r') : app l r ~>* app l r' :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_app_right h₂))
+
+lemma small_star_app {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : app l r ~>* app l' r' :=
+  small_star_trans (small_star_app_left r hl) (small_star_app_right l' hr)
+
+lemma small_star_lam_left {l l'} (r) (h : l ~>* l') : lam l r ~>* lam l' r :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_left h₂))
+
+lemma small_star_lam_right {r r'} (l) (h : r ~>* r') : lam l r ~>* lam l r' :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_lam_right h₂))
+
+lemma small_star_lam {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : lam l r ~>* lam l' r' :=
+  small_star_trans (small_star_lam_left r hl) (small_star_lam_right l' hr)
+
+lemma small_star_pi_left {l l'} (r) (h : l ~>* l'): pi l r ~>* pi l' r :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_left h₂))
+
+lemma small_star_pi_right {r r'} (l) (h : r ~>* r'): pi l r ~>* pi l r' :=
+  small_star.rec_on h (λ _, ss_refl) (λ _ _ _ _ h₂ ih, ss_step ih (s_pi_right h₂))
+
+lemma small_star_pi {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : pi l r ~>* pi l' r' :=
+  small_star_trans (small_star_pi_left r hl) (small_star_pi_right l' hr)
+
+/- Equivalence of formulations. -/
+
+lemma red_1_of_small {e₁ e₂} (h : e₁ ~> e₂) : (e₁ ~>₁ e₂) :=
+  h.rec_on
+    (λ _ _ _, r1_beta red_1_refl red_1_refl)
+    (λ _ _ _ _ ihl, r1_app ihl red_1_refl)
+    (λ _ _ _ _ ihr, r1_app red_1_refl ihr)
+    (λ _ _ _ _ ihl, r1_lam ihl red_1_refl)
+    (λ _ _ _ _ ihr, r1_lam red_1_refl ihr)
+    (λ _ _ _ _ ihl, r1_pi ihl red_1_refl)
+    (λ _ _ _ _ ihr, r1_pi red_1_refl ihr)
+
+lemma red_n_of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : ∃ n, (e₁ ~>⟦n⟧ e₂) := by
+{ induction h,
+  case ss_refl : e { exact ⟨_, rn_refl⟩ },
+  case ss_step : e₁ e₂ e₃ h₁ h₂ ih
+  { cases ih with n ih, exact ⟨_, rn_step ih (red_1_of_small h₂)⟩ } }
+
+lemma small_star_of_red_1 {e₁ e₂} (h : e₁ ~>₁ e₂) : e₁ ~>* e₂ := by
+{ induction h,
+  case r1_beta : t _ _ _ _ _ _ ihe ihr
+  { exact ss_step (small_star_app (small_star_lam_right t ihe) ihr) s_beta, },
+  case r1_sort : _ { exact small_star_refl _ },
+  case r1_var : _ { exact small_star_refl _ },
+  case r1_app : _ _ _ _ _ _ ihl ihr { exact small_star_app ihl ihr },
+  case r1_lam : _ _ _ _ _ _ ihl ihr { exact small_star_lam ihl ihr },
+  case r1_pi : _ _ _ _ _ _ ihl ihr { exact small_star_pi ihl ihr } }
+
+lemma small_star_of_red_n {e₁ e₂ n} (h : e₁ ~>⟦n⟧ e₂) : e₁ ~>* e₂ := by
+{ induction h,
+  case rn_refl : e { exact small_star_refl _ },
+  case rn_step : n e₁ e₂ e₃ h₁ h₂ ih { exact small_star_trans ih (small_star_of_red_1 h₂), } }
+
+/-- Confluence of small-step reduction. -/
+lemma small_star_confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>* d) ∧ (c ~>* d) :=
+  let ⟨n, hb'⟩ := red_n_of_small_star hb,
+      ⟨m, hc'⟩ := red_n_of_small_star hc in
+    let ⟨d, hbd', hcd'⟩ := red_n_confluent hb' hc' in
+      ⟨d, small_star_of_red_n hbd', small_star_of_red_n hcd'⟩
 
 end
 end expr
