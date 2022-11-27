@@ -44,6 +44,7 @@ def ctx : Type := list expr
 
 instance : has_to_string ctx := ⟨list.to_string⟩
 instance : has_repr ctx := ⟨list.to_string⟩
+instance : has_append ctx := ⟨λ Γ₁ Γ₂, list.append Γ₁ Γ₂⟩
 
 end
 end coc

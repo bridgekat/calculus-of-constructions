@@ -72,7 +72,7 @@ inductive has_type : ctx → expr → expr → Prop
   has_type Γ (sort n) (sort (nat.succ n))
 | t_var {Γ n t} :
   list.nth Γ n = option.some t →
-  has_type Γ (var (bound n)) t
+  has_type Γ (var (bound n)) (expr.shift t 0 (nat.succ n))
 | t_app {Γ l r t₁ t₂} :
   has_type Γ l (pi t₁ t₂) →
   has_type Γ r t₁ →

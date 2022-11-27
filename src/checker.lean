@@ -27,8 +27,8 @@ def ctx.try_nth : ctx → nat → string ⊕ expr
     (4) Returns `sort 0` itself. -/
 meta def expr.check_rec : expr → Π (Γ Δ : ctx), string ⊕ expr
 | (sort s)        Γ Δ := return (sort (s + 1))
-| (var (bound b)) Γ Δ := Δ.try_nth b
-| (var (free f))  Γ Δ := Γ.try_nth (Γ.length - 1 - f)
+| (var (bound b)) Γ Δ := do t <- Δ.try_nth b, return (expr.shift t 0 (nat.succ b))
+| (var (free f))  Γ Δ := do t <- Γ.try_nth (Γ.length - 1 - f), return t
 | (app l r)   Γ Δ := do
   { tl        ← l.check_rec Γ Δ,
     ⟨t₁, t₂⟩  ← tl.as_pi,

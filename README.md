@@ -1,4 +1,6 @@
-Proof of confluence and unique typing can be found in [`lemmas.lean`](https://github.com/bridgekat/calculus-of-constructions/blob/main/src/lemmas.lean).
+Proofs of **confluence**, **unique typing** and **type preservation** can be found in [`lemmas.lean`](https://github.com/bridgekat/calculus-of-constructions/blob/main/src/lemmas.lean).
+
+(TODO: add more explanation)
 
 ## Details
 
@@ -63,6 +65,34 @@ inductive small : expr → expr → Prop
 inductive small_star : expr → expr → Prop
 | ss_refl {e}        :                                  small_star e e
 | ss_step {e₁ e₂ e₃} : small_star e₁ e₂ → small e₂ e₃ → small_star e₁ e₃
+```
+
+Typing rules considered:
+
+```lean
+/-- Typing rules (without global environment and free variables). -/
+inductive has_type : ctx → expr → expr → Prop
+| t_conv {Γ e t t'} :
+  small_eq t t' →
+  has_type Γ e t →
+  has_type Γ e t'
+| t_sort {Γ n} :
+  has_type Γ (sort n) (sort (nat.succ n))
+| t_var {Γ n t} :
+  list.nth Γ n = option.some t →
+  has_type Γ (var (bound n)) (expr.shift t 0 (nat.succ n))
+| t_app {Γ l r t₁ t₂} :
+  has_type Γ l (pi t₁ t₂) →
+  has_type Γ r t₁ →
+  has_type Γ (app l r) (expr.subst t₂ 0 r)
+| t_lam {Γ t₁ t₂ s e} :
+  has_type Γ (pi t₁ t₂) (sort s) →
+  has_type (t₁ :: Γ) e t₂ →
+  has_type Γ (lam t₁ e) (pi t₁ t₂)
+| t_pi {Γ t₁ s₁ t₂ s₂} :
+  has_type Γ t₁ (sort s₁) →
+  has_type (t₁ :: Γ) t₂ (sort s₂) →
+  has_type Γ (pi t₁ t₂) (sort (max s₁ s₂))
 ```
 
 ## References
