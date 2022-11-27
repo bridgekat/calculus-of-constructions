@@ -3,7 +3,6 @@ import defs
 namespace coc
 section
 
-open idx
 open expr
 
 /-- Size measure for strong induction. -/
@@ -17,28 +16,21 @@ def expr.size : expr → nat
 /-- Lift variables with level ≥ `n` by `m` levels. -/
 @[irreducible]
 def expr.shift : expr → nat → nat → expr
-| (sort s)        n m := sort s
-| (var (bound b)) n m :=
-  if n <= b then var (bound (b + m))
-  else var (bound b)
-| (var (free f))  n m := var (free f)
-| (app l r)       n m := app (expr.shift l n m) (expr.shift r n m)
-| (lam t e)       n m := lam (expr.shift t n m) (expr.shift e (nat.succ n) m)
-| (pi t₁ t₂)      n m := pi (expr.shift t₁ n m) (expr.shift t₂ (nat.succ n) m)
+| (sort s)   n m := sort s
+| (var v)    n m := if n <= v then var (v + m) else var v
+| (app l r)  n m := app (expr.shift l n m) (expr.shift r n m)
+| (lam t e)  n m := lam (expr.shift t n m) (expr.shift e (nat.succ n) m)
+| (pi t₁ t₂) n m := pi (expr.shift t₁ n m) (expr.shift t₂ (nat.succ n) m)
 
 /-- Replace all variables at level = `n` by an expression `e'`
     (when deleting the outermost layer of binder). -/
 @[irreducible]
 def expr.subst : expr → nat → expr → expr
-| (sort s)        n e' := sort s
-| (var (bound b)) n e' :=
-  if n < b then var (bound (nat.pred b))
-  else if n = b then expr.shift e' 0 n
-  else (var (bound b))
-| (var (free f))  n e' := var (free f)
-| (app l r)       n e' := app (expr.subst l n e') (expr.subst r n e')
-| (lam t e)       n e' := lam (expr.subst t n e') (expr.subst e (nat.succ n) e')
-| (pi t₁ t₂)      n e' := pi (expr.subst t₁ n e') (expr.subst t₂ (nat.succ n) e')
+| (sort s)   n e' := sort s
+| (var v)    n e' := if n < v then var (nat.pred v) else if n = v then expr.shift e' 0 n else var v
+| (app l r)  n e' := app (expr.subst l n e') (expr.subst r n e')
+| (lam t e)  n e' := lam (expr.subst t n e') (expr.subst e (nat.succ n) e')
+| (pi t₁ t₂) n e' := pi (expr.subst t₁ n e') (expr.subst t₂ (nat.succ n) e')
 
 /-- Small-step reduction rules. -/
 inductive small : expr → expr → Prop
@@ -72,7 +64,7 @@ inductive has_type : ctx → expr → expr → Prop
   has_type Γ (sort n) (sort (nat.succ n))
 | t_var {Γ n t} :
   list.nth Γ n = option.some t →
-  has_type Γ (var (bound n)) (expr.shift t 0 (nat.succ n))
+  has_type Γ (var n) (expr.shift t 0 (nat.succ n))
 | t_app {Γ l r t₁ t₂} :
   has_type Γ l (pi t₁ t₂) →
   has_type Γ r t₁ →

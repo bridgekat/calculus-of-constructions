@@ -27,25 +27,23 @@ lemma nat.le_add_right' (a b c : ℕ) (h : a ≤ b) : a ≤ b + c := le_add_righ
 namespace expr
 section
 
-open idx
-
 /- Uninteresting `shift` lemmas for supporting case analysis. -/
 
-lemma shift_le {v n m} (h : n ≤ v) : var (bound v) ⟦n ↟ m⟧ = var (bound (v + m)) := by
+lemma shift_le {v n m} (h : n ≤ v) : var v ⟦n ↟ m⟧ = var (v + m) := by
 { unfold shift, split_ifs, refl }
 
-lemma shift_gt {v n m} (h : v < n) : var (bound v) ⟦n ↟ m⟧ = var (bound v) := by
+lemma shift_gt {v n m} (h : v < n) : var v ⟦n ↟ m⟧ = var v := by
 { unfold shift, split_ifs with hif, exfalso, exact not_le_of_lt h hif, refl }
 
 /- Uninteresting `subst` lemmas for supporting case analysis. -/
 
-lemma subst_lt {v n e'} (h : n < v) : var (bound v) ⟦n ↦ e'⟧ = var (bound (nat.pred v)) := by
+lemma subst_lt {v n e'} (h : n < v) : var v ⟦n ↦ e'⟧ = var (nat.pred v) := by
 { unfold subst, split_ifs, refl }
 
-lemma subst_eq {n e'} : var (bound n) ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
+lemma subst_eq {n e'} : var n ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
 { unfold subst, split_ifs with hif, { exfalso, exact nat.lt_irrefl _ hif }, refl }
 
-lemma subst_gt {v n e'} (h : v < n) : var (bound v) ⟦n ↦ e'⟧ = var (bound v) := by
+lemma subst_gt {v n e'} (h : v < n) : var v ⟦n ↦ e'⟧ = var v := by
 { unfold subst, split_ifs with hif₁ hif₂,
   { exfalso, exact nat.lt_irrefl _ (nat.lt_trans h hif₁) },
   { rw hif₂ at h, exfalso, exact nat.lt_irrefl _ h },
@@ -65,8 +63,7 @@ lemma shift_shift_disjoint_ind (e k a b c) : e ⟦(b + k) ↟ c⟧ ⟦k ↟ a⟧
 { induction e generalizing k,
   case sort : s { unfold shift },
   case var : v
-  { cases v, swap, { unfold shift },
-    rcases (lt_or_le v k) with h₁ | h₁,
+  { rcases (lt_or_le v k) with h₁ | h₁,
     { rw [shift_gt (nat.lt_add_left _ _ _ h₁),
           shift_gt h₁,
           shift_gt (nat.lt_add_left _ _ _ h₁)] },
@@ -89,8 +86,7 @@ lemma shift_shift_overlap_ind (e k a b c) : e ⟦k ↟ (a + b)⟧ ⟦(a + k) ↟
 { induction e generalizing k,
   case sort : s { unfold shift },
   case var : v
-  { cases v, swap, { unfold shift },
-    rcases (lt_or_le v k) with h | h,
+  { rcases (lt_or_le v k) with h | h,
     { rw [shift_gt h,
           shift_gt (nat.lt_add_left _ _ _ h),
           shift_gt h] },
@@ -110,8 +106,7 @@ lemma shift_subst_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ e'
 { induction e generalizing k n m,
   case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold shift subst },
-    rcases (lt_or_le v k) with h₁ | h₁,
+  { rcases (lt_or_le v k) with h₁ | h₁,
     { rw [shift_gt h₁,
           subst_gt (nat.lt_add_left _ _ _ h₁),
           subst_gt (nat.lt_add_left _ _ _ h₁),
@@ -141,8 +136,7 @@ lemma shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n
 { induction e generalizing k,
   case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold shift subst },
-    rcases (lt_or_le v k) with h₁ | h₁,
+  { rcases (lt_or_le v k) with h₁ | h₁,
     { rw [shift_gt h₁,
           shift_gt h₁,
           subst_gt (nat.lt_add_left _ _ _ h₁)] },
@@ -154,15 +148,14 @@ lemma shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n
   case lam : t e ht he { unfold shift subst, rw [ht, ← nat.add_succ n k, he] },
   case pi : t₁ t₂ ht₁ ht₂ { unfold shift subst, rw [ht₁, ← nat.add_succ n k, ht₂] } }
 
-lemma shift_subst_inside (e e') {n m} : e ⟦0 ↟ nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ :=
+lemma shift_subst_inside (e e' n m) : e ⟦0 ↟ nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ :=
   shift_subst_inside_ind e e' 0 n m
 
 lemma shift_subst_below_ind (e e' k n m) : e ⟦nat.succ (n + k) ↟ m⟧ ⟦k ↦ e' ⟦n ↟ m⟧⟧ = e ⟦k ↦ e'⟧ ⟦(n + k) ↟ m⟧ := by
 { induction e generalizing k,
   case sort : s { unfold shift subst },
   case var : v
-  { cases v, swap, { unfold shift subst },
-    rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
+  { rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
     { rw [shift_gt (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
           subst_gt h₁,
           subst_gt h₁,
@@ -194,8 +187,7 @@ lemma subst_subst_ind (e e₁ e₂ k n) : e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k
 { induction e generalizing e₁ e₂ k n,
   case sort : s { unfold subst },
   case var : v
-  { cases v, swap, { unfold subst },
-    rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
+  { rcases (nat.lt_trichotomy v k) with h₁ | h₁ | h₁,
     { rw [subst_gt h₁,
           subst_gt (nat.lt_add_left _ _ _ h₁),
           subst_gt (nat.lt_succ_of_lt (nat.lt_add_left _ _ _ h₁)),
@@ -291,7 +283,7 @@ lemma red_1_subst_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l 
   cases l₀,
   case sort : s { cases hl₀, unfold subst, exact r1_sort },
   case var : v
-  { cases v; cases hl₀; unfold subst, swap, apply r1_var,
+  { cases hl₀; unfold subst,
     split_ifs; exact red_1_refl <|> skip,
     exact red_1_shift k hr₀ },
   case app : l r
@@ -890,7 +882,7 @@ lemma has_type_conv {Γ e t'} (t) (h : t ~~ t') (h' : Γ ▷ e : t) :
 lemma has_type_sort {Γ n t} (h : Γ ▷ sort n : t) :
   t ~~ sort n.succ := has_type_unique h t_sort
 
-lemma has_type_var_bound {Γ n t} (h : Γ ▷ var (bound n) : t) :
+lemma has_type_var {Γ n t} (h : Γ ▷ var n : t) :
   ∃ t', (list.nth Γ n = option.some t') ∧ (t ~~ t'⟦0 ↟ n.succ⟧) := by
 { induction' h,
   case t_conv : Γ t t' ht h ih
@@ -898,10 +890,6 @@ lemma has_type_var_bound {Γ n t} (h : Γ ▷ var (bound n) : t) :
     exact ⟨t'', ih₁, se_trans (se_symm ht) ih₂⟩ },
   case t_var : Γ n t ht
   { exact ⟨t, ht, se_refl⟩ } }
-
-lemma has_type_var_free {Γ n t} (h : Γ ▷ var (free n) : t) :
-  false := by /- Free variables not supported yet. -/
-{ induction' h, exact ih }
 
 lemma has_type_app {Γ l r t} (h : Γ ▷ app l r : t) :
   ∃ t₁ t₂, (Γ ▷ l : pi t₁ t₂) ∧ (Γ ▷ r : t₁) ∧ (t ~~ t₂ ⟦0 ↦ r⟧) := by
@@ -912,8 +900,8 @@ lemma has_type_app {Γ l r t} (h : Γ ▷ app l r : t) :
   case t_app : Γ l r t₁ t₂ hl hr _ _
   { exact ⟨t₁, t₂, hl, hr, se_refl⟩ } }
 
-lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t)
-  : ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
+lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
+  ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
 { induction' h,
   case t_conv : Γ t t' ht h ih
   { obtain ⟨t₂, s, ih₁, ih₂, ih₃⟩ := ih,
@@ -921,8 +909,8 @@ lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t)
   case t_lam : Γ t₁ t₂ s e ht₁ ht₂ _ _
   { exact ⟨t₂, s, ht₁, ht₂, se_refl⟩ } }
 
-lemma has_type_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t)
-  : ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
+lemma has_type_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) :
+  ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
 { induction' h,
   case t_conv : Γ t t' ht h ih
   { obtain ⟨s₁, s₂, ih₁, ih₂, ih₃⟩ := ih,
@@ -1046,7 +1034,7 @@ lemma list.nth_aux_5 {α} (a : list α) (b : α) (c : list α) (n : nat) :
   list.nth (a ++ b :: c) (a.length + n.succ) = list.nth c n := by
 { rw [nat.add_comm, list.nth_append_right (nat.le_add_left _ _), nat.add_sub_cancel _ _], refl }
 
-/-- Auxiliary lemma for induction. (Ugly!) -/
+/-- How typing interacts with shifting. -/
 lemma has_type_shift_ind (Δ : ctx) {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) :
   ctxshift Γ' Δ.length ++ Δ ++ Γ ▷ e ⟦Γ'.length ↟ Δ.length⟧ : t ⟦Γ'.length ↟ Δ.length⟧ := by
 { induction' h,
@@ -1096,7 +1084,7 @@ lemma has_type_shift (Δ : ctx) {Γ e t} (h : Γ ▷ e : t) :
   rw list.nil_append at this,
   exact this }
 
-/-- Auxiliary lemma for induction. (Ugly!) -/
+/-- How typing interacts with substitution. -/
 lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : Γ ++ t₁ :: Δ ▷ l : t₂) (hr : Δ ▷ r : t₁) :
   ctxsubst Γ r ++ Δ ▷ l ⟦Γ.length ↦ r⟧ : t₂ ⟦Γ.length ↦ r⟧ := by
 { revert_all, intros Γ₀ Δ₀ l₀ r₀ t₁₀ t₂₀ hl₀ hr₀,
@@ -1150,7 +1138,6 @@ lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : Γ ++ t₁ :: Δ ▷ l : t�
     rw [nat.add_one, list.cons_append] at iht₂,
     exact iht₂ } }
 
-/-- Beta reduction preserves type. -/
 lemma has_type_subst {Γ l r t₁ t₂} (hl : t₁ :: Γ ▷ l : t₂) (hr : Γ ▷ r : t₁) :
   Γ ▷ l ⟦0 ↦ r⟧ : t₂ ⟦0 ↦ r⟧ := by
 { rw ← list.nil_append (t₁ :: Γ) at hl,

@@ -1,25 +1,11 @@
 namespace coc
 section
 
-/-- Bound and free variables (de Bruijn indices and global IDs.) -/
-@[derive decidable_eq]
-inductive idx : Type
-| bound : nat → idx
-| free  : nat → idx
-open idx
-
-def idx.show : idx → string
-| (bound id) := "?b" ++ to_string id
-| (free id)  := "?f" ++ to_string id
-
-instance : has_to_string idx := ⟨idx.show⟩
-instance : has_repr idx := ⟨idx.show⟩
-
 /-- Expressions (preterms) -/
 @[derive decidable_eq]
 inductive expr : Type
 | sort : nat →         expr
-| var  : idx →         expr
+| var  : nat →         expr
 | app  : expr → expr → expr
 | lam  : expr → expr → expr
 | pi   : expr → expr → expr
@@ -27,7 +13,7 @@ open expr
 
 def expr.show : expr → string
 | (sort s)   := "Sort " ++ to_string s
-| (var v)    := v.show
+| (var v)    := "#" ++ to_string v
 | (app l r)  :=
   let fl := match l with | (sort _) := ff | (var _) := ff | (app _ _) := ff | _ := tt end in
   let fr := match r with | (sort _) := ff | (var _) := ff | _ := tt end in
@@ -44,7 +30,7 @@ def ctx : Type := list expr
 
 instance : has_to_string ctx := ⟨list.to_string⟩
 instance : has_repr ctx := ⟨list.to_string⟩
-instance : has_append ctx := ⟨λ Γ₁ Γ₂, list.append Γ₁ Γ₂⟩
+instance : has_append ctx := ⟨list.append⟩
 
 end
 end coc
