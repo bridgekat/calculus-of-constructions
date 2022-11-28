@@ -1,13 +1,18 @@
-import tactic
-import tactic.induction
+import data.nat.basic
+import data.list.basic
 import data.prod.lex
-import expr
+import tactic.interactive
+import tactic.induction
+
+import defs
+-- import tactics
 
 namespace coc
 section
 
 /- Notations. -/
 
+set_option pp.beta true
 set_option pp.structure_projections false
 
 local notation e ` ⟦` n ` ↦ ` e' `⟧` := expr.subst e n e'
@@ -18,11 +23,16 @@ local notation e ` ⟦` n ` ↟ ` m `⟧`  := expr.shift e n m
 lemma nat.order_aux_1 {a b : nat} (h₁ : ¬a < b) (h₂ : ¬a = b) : (b < a) := ne.lt_of_le (ne.symm h₂) (le_of_not_gt h₁)
 lemma nat.order_aux_2 {a b c : nat} (h : a + b < c) : b < c := lt_of_le_of_lt (nat.le_add_left b a) h
 lemma nat.order_aux_3 {a b c : nat} (h : a + b < c) : a < c := lt_of_le_of_lt (nat.le_add_right a b) h
-lemma nat.le_add_left' (a b c : ℕ) (h : a ≤ b) : a ≤ c + b := le_add_left h
-lemma nat.le_add_right' (a b c : ℕ) (h : a ≤ b) : a ≤ b + c := le_add_right h
 
--- #check @nat.le.intro
--- #check @nat.le.dest
+lemma nat.le_add_left' (a b c : ℕ) (h : a ≤ b) : a ≤ c + b := by
+{ obtain ⟨k, hk⟩ := nat.le.dest h,
+  refine @nat.le.intro _ _ (k + c) _,
+  rw [← nat.add_assoc, hk, nat.add_comm] }
+
+lemma nat.le_add_right' (a b c : ℕ) (h : a ≤ b) : a ≤ b + c := by
+{ obtain ⟨k, hk⟩ := nat.le.dest h,
+  refine @nat.le.intro _ _ (k + c) _,
+  rw [← nat.add_assoc, hk] }
 
 namespace expr
 section
@@ -222,12 +232,12 @@ lemma subst_subst (e e₁ e₂ n) : e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ 
 /- Uninteresting `size` lemmas to support strong induction on `expr`. -/
 
 lemma size_wf : well_founded (λ e₁ e₂ : expr, size e₁ < size e₂) := measure_wf size
-lemma size_lt_size_app_l {l r} : size l < size (app l r) := by { unfold size, rw [← nat.add_succ], simp }
-lemma size_lt_size_app_r {l r} : size r < size (app l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
-lemma size_lt_size_lam_l {l r} : size l < size (lam l r) := by { unfold size, rw [← nat.add_succ], simp }
-lemma size_lt_size_lam_r {l r} : size r < size (lam l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
-lemma size_lt_size_pi_l {l r} : size l < size (pi l r) := by { unfold size, rw [← nat.add_succ], simp }
-lemma size_lt_size_pi_r {l r} : size r < size (pi l r) := by { unfold size, rw [nat.add_comm, ← nat.add_succ], simp }
+lemma size_lt_size_app_l {l r} : size l < size (app l r) := nat.lt_succ_of_le (nat.le_add_right _ _)
+lemma size_lt_size_app_r {l r} : size r < size (app l r) := nat.lt_succ_of_le (nat.le_add_left _ _)
+lemma size_lt_size_lam_l {l r} : size l < size (lam l r) := nat.lt_succ_of_le (nat.le_add_right _ _)
+lemma size_lt_size_lam_r {l r} : size r < size (lam l r) := nat.lt_succ_of_le (nat.le_add_left _ _)
+lemma size_lt_size_pi_l {l r} : size l < size (pi l r) := nat.lt_succ_of_le (nat.le_add_right _ _)
+lemma size_lt_size_pi_r {l r} : size r < size (pi l r) := nat.lt_succ_of_le (nat.le_add_left _ _)
 lemma size_lt_size_app_lam_e {t e r} : size e < size (app (lam t e) r) :=
   nat.lt_trans size_lt_size_lam_r size_lt_size_app_l
 
@@ -497,7 +507,7 @@ lemma traverse {n m a b c g} (h : aux n m a b c g (0, 0)) : ∀ cur, ∃ g', aux
 
   cases j with j,
   { -- Zeroth column (already done in `init`, we just need to move cursor)
-    replace ih := ih (i, m) (prod.lex.left _ _ (lt_add_one i)),
+    replace ih := ih (i, m) (prod.lex.left _ _ (nat.lt_succ_self i)),
     obtain ⟨g, ha, hb, hc, go_down, go_right⟩ := ih, refine ⟨g, ha, hb, hc, _, _⟩,
     { intros i' j' hi' hj' h, refine (go_down i' j' hi' hj' _),
       rw prod.lex.le_iff at h,
@@ -519,7 +529,7 @@ lemma traverse {n m a b c g} (h : aux n m a b c g (0, 0)) : ∀ cur, ∃ g', aux
       { exfalso, exact nat.not_succ_le_zero _ h₂ } } },
 
   -- Inductive case.
-  replace ih := ih (i.succ, j) (prod.lex.right _ (lt_add_one j)),
+  replace ih := ih (i.succ, j) (prod.lex.right _ (nat.lt_succ_self j)),
   obtain ⟨g, ha, hb, hc, go_down, go_right⟩ := ih,
 
   cases (lt_or_le i n) with hi hi, swap,
@@ -553,7 +563,7 @@ lemma traverse {n m a b c g} (h : aux n m a b c g (0, 0)) : ∀ cur, ∃ g', aux
   have hab' : (a' ~>₁ b') := go_down i j hi (nat.le_of_lt hj) (or.inr _), swap,
   { rw prod.lex.le_iff, right, exact ⟨rfl, nat.le_refl _⟩ },
   have hac' : (a' ~>₁ c') := go_right i j (nat.le_of_lt hi) hj (or.inr _), swap,
-  { rw prod.lex.le_iff, left, exact lt_add_one _ },
+  { rw prod.lex.le_iff, left, exact nat.lt_succ_self _ },
   obtain ⟨d', hbd', hcd'⟩ := red_1_confluent hab' hac',
 
   -- Modify grid, prove invariants.
@@ -739,6 +749,7 @@ lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_nor
 
 /- Definitional equality lemmas. -/
 
+@[refl]
 lemma small_eq_refl (e) : e ~~ e := se_refl
 lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ := se_symm h
 lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) := se_trans h₁ h₂
@@ -841,82 +852,104 @@ lemma small_eq_pi_inv {l l' r r'} (h : pi l r ~~ pi l' r') : (l ~~ l') ∧ (r ~~
   have hi' := small_star_pi_inv h₂,
   exact ⟨small_eq_of_small_stars hi.1 hi'.1, small_eq_of_small_stars hi.2 hi'.2⟩ }
 
-open has_type
-open lawful_ctx
+open judgment_index
+open judgment
 
-local notation Γ ` ▷ ` e ` : ` t := has_type Γ e t
-local notation `▷ ` Γ            := lawful_ctx Γ
+local notation `▷ ` Γ            := judgment (well_ctx Γ )
+local notation Γ ` ▷ ` e ` : ` t := judgment (has_type Γ e t)
 
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
-lemma has_type_unique {Γ e t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e : t') : t ~~ t' := by
-{ revert_all, intros Γ₀ e₀ t₀ t₀' h₀ h₀',
-  induction h₀ generalizing t₀',
-  case t_conv : Γ e t t' hc ht ih { exact se_trans (se_symm hc) (ih h₀') },
-  case t_sort : Γ n
-  { induction' h₀',
-    case t_conv : _ _ _ hc' _ ih' { exact se_trans ih' hc' },
-    case t_sort : _ _ { exact se_refl } },
-  case t_var : Γ n t ht
-  { induction' h₀',
-    case t_conv : _ _ _ h' _ ih' { exact se_trans (ih' ht) h' },
-    case t_var : _ _ _ h' { injection eq.trans ht.symm h' with ht, rw ht, exact se_refl } },
+lemma has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := by
+{ revert_all, intros Γ₀ e₀ t₀ h₀,
+  induction' h₀,
+  case t_conv : Γ e t₁ t₂ s hc ht he iht ihe
+  { intros t' h', exact se_trans (se_symm hc) (ihe h') },
+  case t_sort : Γ n h ih
+  { intros t' h', clear ih,
+    induction' h',
+    case t_conv : _ _ _ _ hc' _ _ _ ih' { exact se_trans (ih' h) hc' },
+    case t_sort : { refl } },
+  case t_var : Γ n t h ht ih
+  { intros t' h', clear ih,
+    induction' h',
+    case t_conv : _ _ _ _ hc' _ _ _ ih' { exact se_trans (ih' h ht) hc' },
+    case t_var : _ _ _ _ ht' _ { injection eq.trans ht.symm ht' with ht, rw ht } },
   case t_app : Γ l r t₁ t₂ hl hr ihl ihr
-  { induction' h₀',
-    case t_conv : _ _ _ h' _ ih' { exact se_trans (ih' hl hr (λ _, ihl) (λ _, ihr)) h' },
+  { intros t' h',
+    induction' h',
+    case t_conv : _ _ _ _ hc' _ _ _ ih' { exact se_trans (ih' hl hr (λ _, ihl) (λ _, ihr)) hc' },
     case t_app : _ _ _ _ _ h' _ _ _ { exact small_eq_subst (small_eq_pi_inv (ihl h')).2 se_refl } },
   case t_lam : Γ t₁ t₂ s e hs he iht ihe
-  { induction' h₀',
-    case t_conv : _ _ _ h' _ ih' { exact se_trans (ih' hs he (λ _, iht) (λ _, ihe)) h' },
+  { intros t' h',
+    induction' h',
+    case t_conv : _ _ _ _ hc' _ _ _ ih' { exact se_trans (ih' hs he (λ _, iht) (λ _, ihe)) hc' },
     case t_lam : _ _ _ _ _ _ he' _ _ { exact small_eq_pi se_refl (ihe he') } },
   case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
-  { induction' h₀',
-    case t_conv : _ _ _ h' _ ih' { exact se_trans (ih' ht₁ ht₂ (λ _, iht₁) (λ _, iht₂)) h' },
+  { intros t' h',
+    induction' h',
+    case t_conv : _ _ _ _ hc' _ _ _ ih' { exact se_trans (ih' ht₁ ht₂ (λ _, iht₁) (λ _, iht₂)) hc' },
     case t_pi : _ _ _ _ _ ht₁' ht₂' _ _
-    { rw [small_eq_sort_inv (iht₁ ht₁'), small_eq_sort_inv (iht₂ ht₂')], exact se_refl } } }
+    { rw [small_eq_sort_inv (iht₁ ht₁'), small_eq_sort_inv (iht₂ ht₂')] } } }
 
 /-- Typing judgment lemmas. -/
 
-lemma has_type_conv {Γ e t'} (t) (h : t ~~ t') (h' : Γ ▷ e : t) :
-  Γ ▷ e : t' := t_conv h h'
+lemma has_type_conv {Γ e t' s} (t) (hc : t ~~ t') (hs : Γ ▷ t' : sort s) (h' : Γ ▷ e : t) :
+  Γ ▷ e : t' := t_conv hc hs h'
 
 lemma has_type_sort {Γ n t} (h : Γ ▷ sort n : t) :
-  t ~~ sort n.succ := has_type_unique h t_sort
+  t ~~ sort n.succ := by
+{ induction' h,
+  case t_conv : Γ t t' s hc ht he iht ihe { exact se_trans (se_symm hc) ihe },
+  case t_sort : Γ n h ih { refl } }
 
 lemma has_type_var {Γ n t} (h : Γ ▷ var n : t) :
   ∃ t', (list.nth Γ n = option.some t') ∧ (t ~~ t'⟦0 ↟ n.succ⟧) := by
 { induction' h,
-  case t_conv : Γ t t' ht h ih
-  { obtain ⟨t'', ih₁, ih₂⟩ := ih,
-    exact ⟨t'', ih₁, se_trans (se_symm ht) ih₂⟩ },
-  case t_var : Γ n t ht
+  case t_conv : _ _ _ _ hc _ _ _ ihe
+  { obtain ⟨t'', ih₁, ih₂⟩ := ihe,
+    exact ⟨t'', ih₁, se_trans (se_symm hc) ih₂⟩ },
+  case t_var : _ _ t h ht ih
   { exact ⟨t, ht, se_refl⟩ } }
 
 lemma has_type_app {Γ l r t} (h : Γ ▷ app l r : t) :
   ∃ t₁ t₂, (Γ ▷ l : pi t₁ t₂) ∧ (Γ ▷ r : t₁) ∧ (t ~~ t₂ ⟦0 ↦ r⟧) := by
 { induction' h,
-  case t_conv : Γ t t' ht h ih
-  { obtain ⟨t₁, t₂, ih₁, ih₂, ih₃⟩ := ih,
-    exact ⟨t₁, t₂, ih₁, ih₂, se_trans (se_symm ht) ih₃⟩, },
-  case t_app : Γ l r t₁ t₂ hl hr _ _
+  case t_conv : _ _ _ _ hc _ _ _ ihe
+  { obtain ⟨t₁, t₂, ih₁, ih₂, ih₃⟩ := ihe,
+    exact ⟨t₁, t₂, ih₁, ih₂, se_trans (se_symm hc) ih₃⟩, },
+  case t_app : _ _ _ t₁ t₂ hl hr _ _
   { exact ⟨t₁, t₂, hl, hr, se_refl⟩ } }
 
 lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
-  ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
+  ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ ((t₁ :: Γ) ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
 { induction' h,
-  case t_conv : Γ t t' ht h ih
-  { obtain ⟨t₂, s, ih₁, ih₂, ih₃⟩ := ih,
-    exact ⟨t₂, s, ih₁, ih₂, se_trans (se_symm ht) ih₃⟩ },
-  case t_lam : Γ t₁ t₂ s e ht₁ ht₂ _ _
+  case t_conv : _ _ _ _ hc _ _ _ ihe
+  { obtain ⟨t₂, s, ih₁, ih₂, ih₃⟩ := ihe,
+    exact ⟨t₂, s, ih₁, ih₂, se_trans (se_symm hc) ih₃⟩ },
+  case t_lam : _ _  t₂ s _ ht₁ ht₂ _ _
   { exact ⟨t₂, s, ht₁, ht₂, se_refl⟩ } }
 
 lemma has_type_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) :
-  ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
+  ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ ((t₁ :: Γ) ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
 { induction' h,
-  case t_conv : Γ t t' ht h ih
-  { obtain ⟨s₁, s₂, ih₁, ih₂, ih₃⟩ := ih,
-    exact ⟨s₁, s₂, ih₁, ih₂, se_trans (se_symm ht) ih₃⟩ },
-  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ _ _
+  case t_conv : _ _ _ _ hc _ _ _ ihe
+  { obtain ⟨s₁, s₂, ih₁, ih₂, ih₃⟩ := ihe,
+    exact ⟨s₁, s₂, ih₁, ih₂, se_trans (se_symm hc) ih₃⟩ },
+  case t_pi : _ _ s₁ _ s₂ ht₁ ht₂ _ _
   { exact ⟨s₁, s₂, ht₁, ht₂, se_refl⟩ } }
+
+lemma well_ctx_has_type_sort {Γ n t} (hw : ▷ Γ) (h : list.nth Γ n = option.some t) :
+  ∃ s, (Γ ▷ t ⟦0 ↟ n.succ⟧ : sort s) := by
+{ induction Γ with t Γ ih,
+  { injections },
+  { cases n with n,
+    { rcases hw with _ | @⟨_, _, s, hw, ht⟩,
+      unfold list.nth at h,
+      injection h with h,
+      rw ← h,
+      refine ⟨s, _⟩,
+      sorry },
+    { sorry } } }
 
 /-- Definitional equality for contexts. -/
 inductive small_eq_ctx : ctx → ctx → Prop
@@ -954,14 +987,17 @@ lemma small_eq_ctx_elem {Γ Γ' n t} (he : Γ ~~c Γ') (h : Γ.nth n = option.so
       exact ih h } } }
 
 /-- A term has equal types under equal contexts. -/
-lemma has_type_small_eq_ctx {Γ Γ' e t} (he : Γ ~~c Γ') (h : Γ ▷ e : t) : Γ' ▷ e : t := by
-{ revert_all, intros Γ₀ Γ₀' e₀ t₀ he₀ h₀,
-  induction h₀ generalizing Γ₀',
-  case t_conv : Γ e t t' hc h ih { exact t_conv hc (ih he₀) },
-  case t_sort : Γ n { exact t_sort },
-  case t_var : Γ n t h
-  { obtain ⟨t', h₁, h₂⟩ := small_eq_ctx_elem he₀ h,
-    exact t_conv (small_eq_shift (se_symm h₂) n.succ) (t_var h₁) },
+lemma has_type_small_eq_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ') (he : Γ ~~c Γ') : Γ' ▷ e : t := by
+{ revert_all, intros Γ₀ e₀ t₀ h₀ Γ₀' hw₀ he₀, revert_after h₀,
+  induction' h₀,
+  case t_conv : Γ e t t' s hc ht he iht ihe { intros Γ' hw he, exact t_conv hc (iht hw he) (ihe hw he) },
+  case t_sort : Γ n h ih { intros Γ' hw he, exact t_sort hw },
+  case t_var : Γ n t h ht ih
+  { intros Γ' hw he,
+    obtain ⟨t', h₁, h₂⟩ := small_eq_ctx_elem he ht,
+    have := t_var hw h₁,
+    have := small_eq_shift (se_symm h₂) n.succ,
+    refine t_conv (small_eq_shift (se_symm h₂) n.succ) _ (t_var hw h₁), sorry, sorry },
   case t_app : Γ l r t₁ t₂ hl hr ihl ihr { exact t_app (ihl he₀) (ihr he₀) },
   case t_lam : Γ t₁ t₂ s e hs he iht ihe { exact t_lam (iht he₀) (ihe (sec_cons se_refl he₀)) },
   case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ { exact t_pi (iht₁ he₀) (iht₂ (sec_cons se_refl he₀)) } }
@@ -1038,9 +1074,11 @@ lemma list.nth_aux_5 {α} (a : list α) (b : α) (c : list α) (n : nat) :
 lemma has_type_shift_ind (Δ : ctx) {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) :
   ctxshift Γ' Δ.length ++ Δ ++ Γ ▷ e ⟦Γ'.length ↟ Δ.length⟧ : t ⟦Γ'.length ↟ Δ.length⟧ := by
 { induction' h,
-  case t_conv : e t t' hc h ih { exact t_conv (small_eq_shift_ind hc _ _) (ih _) },
-  case t_sort : n { unfold shift, exact t_sort },
-  case t_var : n t h
+  case t_conv : e t t' s hc ht he iht ihe
+  { unfold shift at iht, exact t_conv (small_eq_shift_ind hc _ _) (iht _) (ihe _) },
+  case t_sort : n h ih
+  { unfold shift, exact t_sort },
+  case t_var : n t h ht ih
   { rcases (lt_or_le n Γ'.length) with h₁ | h₁,
     { rw shift_gt h₁,
       obtain ⟨m, hm⟩ := nat.le.dest (nat.succ_le_of_lt h₁),
@@ -1068,13 +1106,13 @@ lemma has_type_shift_ind (Δ : ctx) {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) :
   case t_lam : t₁ t₂ s e hs he iht ihe
   { unfold shift at *,
     refine t_lam (iht _) _,
-    have := @ihe Δ (t₁ :: Γ') Γ (list.cons_append _ _ _),
-    exact this },
+    refine @ihe Δ (t₁ :: Γ') Γ e t₂ _,
+    rw list.cons_append _ _ _ },
   case t_pi : t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
   { unfold shift at *,
     refine t_pi (iht₁ _) _,
-    have := @iht₂ Δ (t₁ :: Γ') Γ (list.cons_append _ _ _),
-    exact this } }
+    have := @iht₂ Δ (t₁ :: Γ') Γ t₁ t₂ _,
+    rw list.cons_append _ _ _, } }
 
 lemma has_type_shift (Δ : ctx) {Γ e t} (h : Γ ▷ e : t) :
   Δ ++ Γ ▷ e ⟦0 ↟ Δ.length⟧ : t ⟦0 ↟ Δ.length⟧ := by
@@ -1089,9 +1127,12 @@ lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : Γ ++ t₁ :: Δ ▷ l : t�
   ctxsubst Γ r ++ Δ ▷ l ⟦Γ.length ↦ r⟧ : t₂ ⟦Γ.length ↦ r⟧ := by
 { revert_all, intros Γ₀ Δ₀ l₀ r₀ t₁₀ t₂₀ hl₀ hr₀,
   induction' hl₀,
-  case t_conv : e t t' hc h ih { exact t_conv (small_eq_subst_ind hc se_refl _) (ih hr₀) },
-  case t_sort : n { unfold subst, exact t_sort },
-  case t_var : n t h
+  case t_conv : e t t' s hc ht he iht ihe
+  { unfold subst at iht,
+    exact t_conv (small_eq_subst_ind hc se_refl _) (iht hr₀) (ihe hr₀) },
+  case t_sort : n h ih
+  { unfold subst, exact t_sort },
+  case t_var : n t h ht ih
   { rcases (nat.lt_trichotomy Γ₀.length n) with h₁ | h₁ | h₁,
     { cases n with n, { exfalso, exact nat.not_lt_zero _ h₁ },
       rw [subst_lt h₁],
@@ -1150,25 +1191,29 @@ lemma has_type_subst {Γ l r t₁ t₂} (hl : t₁ :: Γ ▷ l : t₂) (hr : Γ 
 lemma has_type_small {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~> e') : (Γ ▷ e' : t) := by
 { revert_all, intros Γ₀ e₀ e' t₀ h h',
   induction h generalizing e',
-  case t_conv : Γ e t t' hc h ih { exact t_conv hc (ih h'), },
-  case t_sort : Γ n { rw small_star_sort_normal (h' : sort n ~>* e'), exact t_sort },
-  case t_var : Γ n t h { cases h' },
+  case t_conv : Γ e t t' s hc ht he iht ihe { exact t_conv hc ht (ihe h') },
+  case t_sort : Γ n h ih { rw small_star_sort_normal (h' : sort n ~>* e'), exact t_sort },
+  case t_var : Γ n t h ht ih { cases h' },
   case t_app : Γ l r t₁ t₂ hl hr ihl ihr
   { cases h',
     case s_beta : t' e' r'
     { obtain ⟨tt, s, h₁, h₂, h₃⟩ := has_type_lam hl,
       have := small_eq_pi_inv h₃,
-      refine t_conv (small_eq_subst (se_symm this.2) se_refl) _,
-      exact has_type_subst h₂ (t_conv this.1 hr) },
+      refine t_conv (small_eq_subst (se_symm this.2) se_refl) _ _,
+      sorry, sorry,
+      refine has_type_subst h₂ (t_conv this.1 _ hr),
+      sorry, sorry },
     case s_app_left : l l' r hl'
     { exact t_app (ihl hl') hr, },
     case s_app_right : l r r' hr'
-    { refine t_conv (small_eq_subst se_refl (se_symm (hr' : r ~~ r'))) _,
+    { refine t_conv (small_eq_subst se_refl (se_symm (hr' : r ~~ r'))) _ _,
+      sorry, sorry,
       exact (t_app hl (ihr hr')) } },
   case t_lam : Γ t₁ t₂ s e hs he iht ihe
   { cases h',
     case s_lam_left : t t' e ht'
-    { refine t_conv (small_eq_pi (se_symm (ht' : t ~~ t')) se_refl) _,
+    { refine t_conv (small_eq_pi (se_symm (ht' : t ~~ t')) se_refl) _ _,
+      sorry, sorry,
       refine t_lam (iht (s_pi_left ht')) _,
       exact has_type_small_eq_ctx (sec_cons (ht' : t ~~ t') (small_eq_ctx_refl Γ)) he },
     case s_lam_right : t e e' he'
@@ -1185,6 +1230,36 @@ lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ �
 { induction h',
   case ss_refl : e { exact h },
   case ss_step : e₁ e₂ e₃ h₁ h₂ ih { exact has_type_small (ih h) h₂ } }
+
+/-- Equal, well-formed terms have the same type. -/
+lemma has_type_small_eq {Γ e e' t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e' : t') (heq : e ~~ e') : t ~~ t' :=
+  let ⟨e'', h₁, h₁'⟩ := small_stars_of_small_eq heq in
+    let h₂ := has_type_small_star h h₁, h₂' := has_type_small_star h' h₁' in
+      has_type_unique h₂ h₂'
+
+/-- The "type" assigned to any term must have type `sort n`.
+    As a consequence, we may define a term to be a "type" iff it has type `sort n`.
+    Then, every term is either:
+    (1) a sort,
+    (2) a type that is not a sort,
+    (3) a term that is not a type.  -/
+lemma type_has_type_sort {Γ e t} (h : Γ ▷ e : t) : ∃ s, (Γ ▷ t : sort s) := by
+{ revert_all, intros Γ₀ e₀ t₀ h₀,
+  induction' h₀,
+  case t_conv : Γ e t t' s hc hw ht ihw iht
+  { obtain ⟨s', iht'⟩ := iht,
+    refine ⟨s', _⟩,
+     },
+  case t_sort : Γ n h ih
+  { admit },
+  case t_var : Γ n t h ht ih
+  { admit },
+  case t_app : Γ l r t₁ t₂ hl hr ihl ihr
+  { admit },
+  case t_lam : Γ t₁ t₂ s e hs he iht ihe
+  { admit },
+  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
+  { admit } }
 
 end
 end expr

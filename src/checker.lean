@@ -1,5 +1,4 @@
 import data.sum.basic
-import expr
 import lemmas
 
 namespace coc
