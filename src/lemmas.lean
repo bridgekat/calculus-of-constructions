@@ -1064,7 +1064,7 @@ lemma has_type_shift_ind (Δ : ctx) {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) :
   { unfold shift at *,
     have := shift_subst_below_ind t₂ r 0 Γ'.length Δ.length,
     rw nat.add_zero at this, rw ← this,
-    refine t_app (ihl _) (ihr _) },
+    exact t_app (ihl _) (ihr _) },
   case t_lam : t₁ t₂ s e hs he iht ihe
   { unfold shift at *,
     refine t_lam (iht _) _,
@@ -1119,10 +1119,10 @@ lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : Γ ++ t₁ :: Δ ▷ l : t�
       refine t_var _,
       rw [← @ctxsubst_length Γ₀ r₀] at h₁,
       rw [list.nth_aux_1 _ _ _ h₁],
-      refine ctxsubst_nth h hm } },
+      exact ctxsubst_nth h hm } },
   case t_app : l r t₁ t₂ hl hr ihl ihr
   { unfold subst at ihl ⊢, rw ← subst_subst,
-    refine t_app (ihl hr₀) (ihr hr₀) },
+    exact t_app (ihl hr₀) (ihr hr₀) },
   case t_lam : t₁ t₂ s e hs he iht ihe
   { unfold subst at iht ⊢,
     refine t_lam (iht hr₀) _,
@@ -1172,19 +1172,19 @@ lemma has_type_small {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~> e') : (Γ ▷ e' 
       refine t_lam (iht (s_pi_left ht')) _,
       exact has_type_small_eq_ctx (sec_cons (ht' : t ~~ t') (small_eq_ctx_refl Γ)) he },
     case s_lam_right : t e e' he'
-    { refine t_lam hs (ihe he') } },
+    { exact t_lam hs (ihe he') } },
   case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
   { cases h',
     case s_pi_left : t₁' t₁'' t₂' ht₁'
     { refine t_pi (iht₁ ht₁') _,
       exact has_type_small_eq_ctx (sec_cons (ht₁' : t₁' ~~ t₁'') (small_eq_ctx_refl Γ)) ht₂ },
     case s_pi_right : t₁' t₂' t₂'' ht₂'
-    { refine t_pi ht₁ (iht₂ ht₂') } } }
+    { exact t_pi ht₁ (iht₂ ht₂') } } }
 
 lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ ▷ e' : t) := by
 { induction h',
   case ss_refl : e { exact h },
-  case ss_step : e₁ e₂ e₃ h₁ h₂ ih { refine has_type_small (ih h) h₂ } }
+  case ss_step : e₁ e₂ e₃ h₁ h₂ ih { exact has_type_small (ih h) h₂ } }
 
 end
 end expr

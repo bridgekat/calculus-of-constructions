@@ -30,7 +30,9 @@ inductive expr : Type
 open expr
 ```
 
-where `var` are variables represented in standard de Bruijn indices.
+`var` are variables represented in standard [de Bruijn indices](https://en.wikipedia.org/wiki/De_Bruijn_index).
+
+When a term is added to a context (which is a list of terms representing types), its overflow variables are considered to refer to the immediate successors in the list, relative to its own position, i.e. free variable with overflow index 0 refers to the next element, 1 refers to the next-next one, etc. Under such convention, prepending to a context does not need to modify any of its existing entries.
 
 ### Single-variable substitutions
 
@@ -57,9 +59,11 @@ def expr.subst : expr → nat → expr → expr
 local notation e ` ⟦` n ` ↟ ` m `⟧` := expr.shift e n m
 ```
 
-> This is definitely far from the optimal formalisation, especially in comparison with [Autosubst](https://www.ps.uni-saarland.de/Publications/documents/SchaeferEtAl_2015_Autosubst_-Reasoning.pdf), but it might be closer to real implementations...
+This is definitely far from the optimal formalisation (especially in comparison with [Autosubst](https://www.ps.uni-saarland.de/Publications/documents/SchaeferEtAl_2015_Autosubst_-Reasoning.pdf)), but it might be closer to real implementations...
 
-Useful lemmas:
+<details>
+<summary>Useful lemmas</summary>
+<br>
 
 ```lean
 /- How `shift` interacts with itself. -/
@@ -79,6 +83,8 @@ lemma shift_subst_below (e e' n m) : e ⟦nat.succ n ↟ m⟧ ⟦0 ↦ e' ⟦n �
 lemma subst_subst_ind (e e₁ e₂ k n) : e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦k ↦ e₁⟧ ⟦(n + k) ↦ e₂⟧ := ...
 lemma subst_subst (e e₁ e₂ n) : e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦0 ↦ e₁⟧ ⟦n ↦ e₂⟧ := ...
 ```
+
+</details>
 
 ### Reduction rules
 
@@ -103,7 +109,9 @@ inductive small_star : expr → expr → Prop
 local notation e ` ~>* ` e' := small_star e e'
 ```
 
-Useful lemmas:
+<details>
+<summary>Useful lemmas</summary>
+<br>
 
 ```lean
 lemma small_star_refl (e) : e ~>* e := ...
@@ -130,6 +138,8 @@ lemma small_star_self_of_is_normal {e e'} (hn : is_normal e) (h: e ~>* e') : e =
 /-- If a term has a normal form, it must be unique. -/
 lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_normal e₁) (h₂ : e ~>* e₂) (hn₂ : is_normal e₂) : e₁ = e₂ := ...
 ```
+
+</details>
 
 ### Typing rules
 
@@ -161,7 +171,9 @@ inductive has_type : ctx → expr → expr → Prop
 local notation Γ ` ▷ ` e ` : ` t := has_type Γ e t
 ```
 
-Useful lemmas:
+<details>
+<summary>Useful lemmas</summary>
+<br>
 
 ```lean
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
@@ -189,6 +201,8 @@ lemma has_type_subst {Γ l r t₁ t₂} (hl : t₁ :: Γ ▷ l : t₂) (hr : Γ 
 lemma has_type_small {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~> e') : (Γ ▷ e' : t) := ...
 lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ ▷ e' : t) := ...
 ```
+
+</details>
 
 ## References
 

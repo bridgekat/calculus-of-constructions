@@ -40,10 +40,10 @@ meta def expr.check : expr → Π (Γ : ctx), string ⊕ expr
     t₂        ← e.check (t :: Γ),
     return (pi t t₂) }
 | (pi t₁ t₂)  Γ := do
-  { t'        ← t₁.check Γ,
-    s₁        ← t'.as_sort,
-    t''       ← t₂.check (t₁ :: Γ),
-    s₂        ← t''.as_sort,
+  { t₁'       ← t₁.check Γ,
+    s₁        ← t₁'.as_sort,
+    t₂'       ← t₂.check (t₁ :: Γ),
+    s₂        ← t₂'.as_sort,
     return (sort (max s₁ s₂)) }
 
 end coc
