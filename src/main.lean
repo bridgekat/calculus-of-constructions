@@ -42,8 +42,8 @@ meta def main : io unit := do
   io.put_str_ln e₁.show,
   io.put_str_ln "",
   match e₁.check c₁ with
-  | (sum.inl msg) := io.put_str_ln $ "Error: " ++ msg
-  | (sum.inr t)   := io.put_str_ln t.show
+  | sum.inl msg    := io.put_str_ln $ "Error: " ++ msg
+  | sum.inr ⟨t, _⟩ := io.put_str_ln t.show
   end,
   io.put_str_ln "",
   return () }

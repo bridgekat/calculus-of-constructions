@@ -54,7 +54,7 @@ inductive small_eq : expr → expr → Prop
 | se_symm  {e₁ e₂}    : small_eq e₁ e₂ →                  small_eq e₂ e₁
 | se_trans {e₁ e₂ e₃} : small_eq e₁ e₂ → small_eq e₂ e₃ → small_eq e₁ e₃
 
-/-- Typing rules (without global environment and free variables). -/
+/-- Typing rules. -/
 inductive has_type : ctx → expr → expr → Prop
 | t_conv {Γ e t t'} :
   small_eq t t' →
@@ -82,22 +82,6 @@ inductive has_type : ctx → expr → expr → Prop
 inductive lawful_ctx : ctx → Prop
 | c_nil          :                                        lawful_ctx []
 | c_cons {Γ t s} : lawful_ctx Γ → has_type Γ t (sort s) → lawful_ctx (t :: Γ)
-
-/-- Performs applicative-order beta-reduction.
-    If the original expression is well-typed, the resulting expression will have the same type.
-    Note that this function is only a syntactic operation, and does not check well-formedness.
-    It does not terminate on inputs like `(fun x => x x x) (fun x => x x x)`. -/
-meta def expr.reduce : expr → expr
-| (sort s)   := sort s
-| (var v)    := var v
-| (app l r)  :=
-  let l' := expr.reduce l, r' := expr.reduce r in
-    match l' with
-    | (lam t e) := expr.reduce (expr.subst e 0 r')
-    | _         := app l' r'
-    end
-| (lam t e)  := lam (expr.reduce t) (expr.reduce e)
-| (pi t₁ t₂) := pi (expr.reduce t₁) (expr.reduce t₂)
 
 end
 end coc

@@ -16,6 +16,8 @@ lemma has_type_unique {Γ e t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e : t') : t ~~
 lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ ▷ e' : t) := ...
 ```
 
+There is also a type checker in [`checker.lean`](src/checker.lean) that returns a soundness proof in addition to the result, with an example in [`main.lean`](src/main.lean). There is no parsing or pretty-printing...
+
 ## Details
 
 ### Terms (preterms)
@@ -32,7 +34,7 @@ open expr
 
 `var` are variables represented in standard [de Bruijn indices](https://en.wikipedia.org/wiki/De_Bruijn_index).
 
-When a term is added to a context (which is a list of terms representing types), its overflow variables are considered to refer to the immediate successors in the list, relative to its own position, i.e. free variable with overflow index 0 refers to the next element, 1 refers to the next-next one, etc. Under such convention, prepending to a context does not need to modify any of its existing entries.
+When a term is added to a context (which is a list of terms representing types), its overflow variables are considered to refer to the immediate successors in the list, relative to its own position, i. e. free variable with overflow level 0 refers to the next element, 1 refers to the next-next one, etc. Under such convention, prepending to a context does not need to modify any of its existing entries.
 
 ### Single-variable substitutions
 
@@ -144,7 +146,7 @@ lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_nor
 ### Typing rules
 
 ```lean
-/-- Typing rules (without global environment and free variables). -/
+/-- Typing rules. -/
 inductive has_type : ctx → expr → expr → Prop
 | t_conv {Γ e t t'} :
   small_eq t t' →
