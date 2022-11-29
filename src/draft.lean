@@ -91,7 +91,14 @@ lemma test : well_founded (nat.lt) :=
       case refl { exact ih },
       case step : y hy { apply h, exact nat.lt_of_succ_le hy } } }⟩
 
-example : true := true.intro
+/-
+case t_conv : Γ e t t' s hc ht he iht ihe { sorry },
+case t_sort : Γ n hc ih { sorry },
+case t_var : Γ n t hc ht ih { sorry },
+case t_app : Γ l r t₁ t₂ hl hr ihl ihr { sorry },
+case t_lam : Γ t₁ t₂ s e hs he iht ihe { sorry },
+case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ { sorry }
+-/
 
 end
 end coc

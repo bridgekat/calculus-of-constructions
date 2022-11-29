@@ -85,9 +85,9 @@ instance : has_to_string ctx := ⟨list.to_string⟩
 instance : has_repr ctx := ⟨list.to_string⟩
 instance : has_append ctx := ⟨list.append⟩
 
-/-- Lean 3 does not primitively support mutually inductive types. -/
+/-- Lean 3 does not have good specialised support for mutually inductive types. -/
 @[derive decidable_eq]
-inductive judgment_index
+inductive judgment_index : Type
 | well_ctx : ctx →               judgment_index
 | has_type : ctx → expr → expr → judgment_index
 open judgment_index
