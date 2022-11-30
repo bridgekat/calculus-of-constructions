@@ -1,5 +1,5 @@
 import tactic
-import expr
+import defs
 
 namespace coc
 section

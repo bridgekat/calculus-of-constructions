@@ -54,8 +54,8 @@ section
 set_option pp.beta true
 set_option pp.structure_projections false
 
-local notation e ` ⟦` n ` ↦ ` e' `⟧` := subst e n e'
-local notation e ` ⟦` n ` ↟ ` m `⟧`  := shift e n m
+local notation e ` ⟦`:80 n:80 ` ↦ `:80 e':79 `⟧`:79 := subst e n e'
+local notation e ` ⟦`:80 n:80 ` ↟ `:80 m:79 `⟧`:79  := shift e n m
 
 /- Uninteresting `shift` lemmas for supporting case analysis. -/
 
@@ -272,7 +272,7 @@ inductive red_1 : expr → expr → Prop
 | r1_pi   {t₁ t₁' t₂ t₂'} : red_1 t₁ t₁' → red_1 t₂ t₂' → red_1 (pi t₁ t₂) (pi t₁' t₂')
 open red_1
 
-local notation e ` ~>₁ ` e' := red_1 e e'
+local notation e ` ~>₁ `:50 e':50 := red_1 e e'
 
 lemma red_1_refl {e} : e ~>₁ e :=
   @expr.rec_on (λ e, e ~>₁ e) e
@@ -388,7 +388,7 @@ inductive red_n : nat → expr → expr → Prop
 | rn_step {n e₁ e₂ e₃} : red_n n e₁ e₂ → (red_1 e₂ e₃) → red_n (nat.succ n) e₁ e₃
 open red_n
 
-local notation e ` ~>⟦` n `⟧ ` e' := red_n n e e'
+local notation e ` ~>⟦`:50 n:50 `⟧ `:50 e':50 := red_n n e e'
 
 lemma red_n_refl {e} : e ~>⟦0⟧ e :=
   rn_refl
@@ -658,9 +658,9 @@ open small
 open small_star
 open small_eq
 
-local notation e ` ~> ` e'  := small e e'
-local notation e ` ~>* ` e' := small_star e e'
-local notation e ` ~~ ` e'  := small_eq e e'
+local notation e ` ~> `:50 e':50  := small e e'
+local notation e ` ~>* `:50 e':50 := small_star e e'
+local notation e ` ~~ `:50 e':50  := small_eq e e'
 
 /- Reduction lemmas. -/
 
@@ -769,10 +769,9 @@ lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_nor
 
 /- Definitional equality lemmas. -/
 
-@[refl]
-lemma small_eq_refl (e) : e ~~ e := se_refl
-lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ := se_symm h
-lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) := se_trans h₁ h₂
+@[refl] lemma small_eq_refl (e) : e ~~ e := se_refl
+@[symm] lemma small_eq_symm {e₁ e₂} (h : e₁ ~~ e₂) : e₂ ~~ e₁ := se_symm h
+@[trans] lemma small_eq_trans {e₁ e₂ e₃} (h₁ : e₁ ~~ e₂) (h₂ : e₂ ~~ e₃) : (e₁ ~~ e₃) := se_trans h₁ h₂
 
 lemma small_eq_app {l l' r r'} (hl : l ~~ l') (hr : r ~~ r') : app l r ~~ app l' r' :=
   @se_trans (app l r) (app l' r) (app l' r')
@@ -875,8 +874,8 @@ lemma small_eq_pi_inv {l l' r r'} (h : pi l r ~~ pi l' r') : (l ~~ l') ∧ (r ~~
 open judgment_index
 open judgment
 
-local notation `▷ ` Γ            := judgment (well_ctx Γ )
-local notation Γ ` ▷ ` e ` : ` t := judgment (has_type Γ e t)
+local notation `▷ `:50 Γ:50                  := judgment (well_ctx Γ )
+local notation Γ ` ▷ `:50 e:50 ` : `:50 t:50 := judgment (has_type Γ e t)
 
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
 lemma has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := by
@@ -942,7 +941,7 @@ lemma has_type_app {Γ l r t} (h : Γ ▷ app l r : t) :
   { exact ⟨t₁, t₂, hl, hr, se_refl⟩ } }
 
 lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
-  ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ ((t₁ :: Γ) ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
+  ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
 { induction' h,
   case t_conv : _ _ _ _ hc _ _ _ ihe
   { obtain ⟨t₂, s, ih₁, ih₂, ih₃⟩ := ihe,
@@ -951,7 +950,7 @@ lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
   { exact ⟨t₂, s, ht₁, ht₂, se_refl⟩ } }
 
 lemma has_type_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) :
-  ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ ((t₁ :: Γ) ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
+  ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
 { induction' h,
   case t_conv : _ _ _ _ hc _ _ _ ihe
   { obtain ⟨s₁, s₂, ih₁, ih₂, ih₃⟩ := ihe,
@@ -970,16 +969,16 @@ def ctx_subst : ctx → expr → ctx
 | []       _ := []
 | (t :: Γ) e := (t ⟦Γ.length ↦ e⟧) :: ctx_subst Γ e
 
-local notation `|` Γ `|`       := list.length Γ
-local notation Γ ` ⟦↦↦ ` e `⟧` := ctx_subst Γ e
-local notation Γ ` ⟦↟↟ ` n `⟧` := ctx_shift Γ n
+local notation `∥`:80 Γ:79 `∥`:79       := list.length Γ
+local notation Γ ` ⟦↦↦ `:80 e:79 `⟧`:79 := ctx_subst Γ e
+local notation Γ ` ⟦↟↟ `:80 n:79 `⟧`:79 := ctx_shift Γ n
 
-lemma ctx_shift_length (Γ e) : |(Γ ⟦↟↟ e⟧)| = |Γ| := by
+lemma ctx_shift_length (Γ e) : ∥Γ ⟦↟↟ e⟧∥ = ∥Γ∥ := by
 { induction Γ with t Γ ih,
   { unfold ctx_shift },
   { unfold ctx_shift list.length at *, rw ih } }
 
-lemma ctx_shift_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = |Γ|) (k) :
+lemma ctx_shift_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = ∥Γ∥) (k) :
   list.nth (Γ ⟦↟↟ k⟧) n = option.some (e ⟦m ↟ k⟧) := by
 { induction Γ with t Γ ih generalizing n,
   { unfold list.nth at h, injection h },
@@ -992,12 +991,12 @@ lemma ctx_shift_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.suc
       rw [nat.add_one, nat.succ_add] at h', injection h' with h',
       exact ih h h' } } }
 
-lemma ctx_subst_length (Γ e) : |(Γ ⟦↦↦ e⟧)| = |Γ| := by
+lemma ctx_subst_length (Γ e) : ∥Γ ⟦↦↦ e⟧∥ = ∥Γ∥ := by
 { induction Γ with t Γ ih,
   { unfold ctx_subst },
   { unfold ctx_subst list.length at *, rw ih } }
 
-lemma ctx_subst_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = |Γ|) (e') :
+lemma ctx_subst_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = ∥Γ∥) (e') :
   list.nth (Γ ⟦↦↦ e'⟧) n = option.some (e ⟦m ↦ e'⟧) := by
 { induction Γ with t Γ ih generalizing n,
   { unfold list.nth at h, injection h },
@@ -1012,197 +1011,207 @@ lemma ctx_subst_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.suc
 
 /- How typing interacts with shifting. -/
 
-/-- Lean 3 does not have good specialised support mutually inductive types.
-    To carry out proofs using mutual induction, we have to define both statements beforehand. -/
+/-- Lean 3 does not have good specialised support for mutually inductive types.
+    To carry out proofs using mutual induction, we have to define both motives beforehand. -/
 def judgment_shift_ind_type : judgment_index → Prop
-| (well_ctx Γ₀) :=
-  ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) (h : ▷ (Γ' ++ Γ)) {Δ} (hw : ▷ (Δ ++ Γ)),
-  ▷ (Γ' ⟦↟↟ |Δ|⟧) ++ Δ ++ Γ
-| (has_type Γ₀ e t) :=
-  ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) (h : (Γ' ++ Γ) ▷ e : t) {Δ} (hw : ▷ (Δ ++ Γ)),
-  (Γ' ⟦↟↟ |Δ|⟧ ++ Δ ++ Γ) ▷ e ⟦|Γ'| ↟ |Δ|⟧ : t ⟦|Γ'| ↟ |Δ|⟧
+| (well_ctx Γ₀)     := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), ▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ
+| (has_type Γ₀ e t) := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ ▷ e ⟦∥Γ'∥ ↟ ∥Δ∥⟧ : t ⟦∥Γ'∥ ↟ ∥Δ∥⟧
 
 /-- The mutual induction proof itself. -/
-lemma judgment_shift_ind (i : judgment_index) (h : judgment i) : judgment_shift_ind_type i := by
+lemma judgment_shift_ind {i : judgment_index} (h : judgment i) : judgment_shift_ind_type i := by
 { induction h,
   case c_nil
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw list.nil_eq_append_iff at h₀,
-    rw h₀.1 at h ⊢, rw h₀.2 at h hw ⊢,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw,
+    rw list.nil_eq_append_iff at h₀,
+    rw h₀.1 at ⊢, rw h₀.2 at hw ⊢,
     exact hw },
   case c_cons : Γ₀ t s hw ht ihw iht
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw',
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw',
     cases Γ' with t' Γ' ih',
     { unfold ctx_shift, exact hw' },
     { rw list.cons_append at h₀, injection h₀ with h₁ h₂,
-      rw ← h₁ at h h₀ ⊢, clear h₁ t',
+      rw ← h₁ at h₀ ⊢, clear h₁ t',
       rw h₂ at hw ht ihw iht, clear h₂ h₀ Γ₀,
-      specialize ihw rfl hw hw',
-      specialize iht rfl ht hw', unfold shift at iht,
+      specialize ihw rfl hw',
+      specialize iht rfl hw', unfold shift at iht,
       unfold ctx_shift,
       exact c_cons ihw iht } },
   case t_conv : Γ₀ e t t' s hc ht he iht ihe
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize iht rfl ht hw, unfold shift at iht,
-    specialize ihe rfl he hw,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht rfl hw, unfold shift at iht,
+    specialize ihe rfl hw,
     exact t_conv (small_eq_shift_ind hc _ _) iht ihe },
   case t_sort : Γ₀ n hc ih 
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize ih rfl hc hw,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize ih rfl hw,
     unfold shift, exact t_sort ih },
   case t_var : Γ₀ n t hc ht ih
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize ih rfl hc hw,
-    rcases (lt_or_le n Γ'.length) with h₁ | h₁,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize ih rfl hw,
+    rcases lt_or_le n ∥Γ'∥ with h₁ | h₁,
     { rw shift_gt h₁,
       obtain ⟨m, hm⟩ := nat.le.dest (nat.succ_le_of_lt h₁),
-      have := shift_shift_disjoint t n.succ m Δ.length,
+      have := shift_shift_disjoint t n.succ m ∥Δ∥,
       rw hm at this, rw ← this, clear this,
       refine t_var ih _,
-      have h₂ := h₁, rw ← @ctx_shift_length Γ' Δ.length at h₂,
+      have h₂ := h₁, rw ← @ctx_shift_length Γ' ∥Δ∥ at h₂,
       rw [list.append_assoc, list.nth_aux_1 _ _ _ h₂],
       rw list.nth_aux_1 _ _ _ h₁ at ht,
       exact ctx_shift_nth ht hm _ },
     { rw shift_le h₁,
       obtain ⟨m, hm⟩ := nat.le.dest h₁,
-      have := shift_shift_overlap t Γ'.length m.succ Δ.length,
+      have := shift_shift_overlap t ∥Γ'∥ m.succ ∥Δ∥,
       rw [nat.add_succ, hm] at this, rw [this, nat.succ_add], clear this,
       refine t_var ih _,
-      rw [← hm, list.nth_aux_2] at ht,
-      have h₂ := hm, rw ← @ctx_shift_length Γ' Δ.length at h₂,
+      have h₂ := hm, rw ← @ctx_shift_length Γ' ∥Δ∥ at h₂,
       rw [← h₂, list.append_assoc, nat.add_assoc, list.nth_aux_2, nat.add_comm, list.nth_aux_2],
+      rw [← hm, list.nth_aux_2] at ht,
       exact ht } },
   case t_app : Γ₀ l r t₁ t₂ hl hr ihl ihr
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize ihl rfl hl hw,
-    specialize ihr rfl hr hw,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize ihl rfl hw,
+    specialize ihr rfl hw,
     unfold shift at *,
-    have := shift_subst_below_ind t₂ r 0 Γ'.length Δ.length,
-    rw nat.add_zero at this, rw ← this,
+    have := shift_subst_below_ind t₂ r 0 ∥Γ'∥ ∥Δ∥,
+    rw nat.add_zero at this, rw ← this, clear this,
     exact t_app ihl ihr },
   case t_lam : Γ₀ t₁ t₂ s e hs he iht ihe
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize iht rfl hs hw,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht rfl hw,
     rw ← list.cons_append at he ihe,
-    specialize ihe rfl he hw, unfold ctx_shift at ihe,
+    specialize ihe rfl hw, unfold ctx_shift at ihe,
     unfold shift at *,
     exact t_lam iht ihe },
   case t_pi : Γ₀ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
-  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ h Δ hw, rw h₀ at *, clear h₀ Γ₀,
-    specialize iht₁ rfl ht₁ hw,
+  { unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht₁ rfl hw,
     rw ← list.cons_append at ht₂ iht₂,
-    specialize iht₂ rfl ht₂ hw, unfold ctx_shift at iht₂,
+    specialize iht₂ rfl hw, unfold ctx_shift at iht₂,
     unfold shift at *,
     exact t_pi iht₁ iht₂ } }
 
 lemma well_ctx_shift_ind {Γ' Γ} (h : ▷ Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ) :
-  ▷ (Γ' ⟦↟↟ |Δ|⟧) ++ Δ ++ Γ :=
-    judgment_shift_ind (well_ctx (Γ' ++ Γ)) h rfl h hw
+  ▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ :=
+    judgment_shift_ind h rfl hw
 
-lemma well_ctx_shift {Γ} (h : ▷ Γ) {Δ} (hw : ▷ Δ ++ Γ) : -- This one is useless.
-  ▷ Δ ++ Γ := by
-{ rw ← list.nil_append Γ at h,
-  have := well_ctx_shift_ind h hw,
-  unfold ctx_shift list.append at this,
-  rw list.nil_append at this,
-  exact this }
+lemma has_type_shift_ind {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) {Δ} (hw : ▷ Δ ++ Γ) :
+  Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ ▷ e ⟦∥Γ'∥ ↟ ∥Δ∥⟧ : t ⟦∥Γ'∥ ↟ ∥Δ∥⟧ :=
+    judgment_shift_ind h rfl hw
 
-lemma has_type_shift_ind {Γ' Γ e t} (h : (Γ' ++ Γ) ▷ e : t) {Δ} (hw : ▷ (Δ ++ Γ)) :
-  (Γ' ⟦↟↟ |Δ|⟧ ++ Δ ++ Γ) ▷ e ⟦|Γ'| ↟ |Δ|⟧ : t ⟦|Γ'| ↟ |Δ|⟧ :=
-    judgment_shift_ind (has_type (Γ' ++ Γ) e t) h rfl h hw
-
-lemma has_type_shift {Γ e t} (h : Γ ▷ e : t) {Δ} (hw : ▷ (Δ ++ Γ)) :
-  (Δ ++ Γ) ▷ e ⟦0 ↟ |Δ|⟧ : t ⟦0 ↟ |Δ|⟧ := by
+lemma has_type_shift {Γ e t} (h : Γ ▷ e : t) {Δ} (hw : ▷ Δ ++ Γ) :
+  Δ ++ Γ ▷ e ⟦0 ↟ ∥Δ∥⟧ : t ⟦0 ↟ ∥Δ∥⟧ := by
 { rw ← list.nil_append Γ at h,
   have := has_type_shift_ind h hw,
   unfold ctx_shift list.length at this,
   rw list.nil_append at this,
   exact this }
 
-/-- How typing interacts with substitution. -/
-lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : (Γ ++ t₁ :: Δ) ▷ l : t₂) (hr : Δ ▷ r : t₁) :
-  (ctx_subst Γ r ++ Δ) ▷ l ⟦Γ.length ↦ r⟧ : t₂ ⟦Γ.length ↦ r⟧ := by
-{ revert_all, intros Γ₀ Δ₀ l₀ r₀ t₁₀ t₂₀ hl₀ hr₀,
-  induction' hl₀,
-  case t_conv : e t t' s hc ht he iht ihe
-  { unfold subst at iht,
-    exact t_conv (small_eq_subst_ind hc se_refl _) (iht hr₀) (ihe hr₀) },
-  case t_sort : n h ih
-  { unfold subst, exact t_sort },
-  case t_var : n t h ht ih
-  { rcases (nat.lt_trichotomy Γ₀.length n) with h₁ | h₁ | h₁,
+/- How typing interacts with substitution. -/
+
+/-- Lean 3 does not have good specialised support for mutually inductive types.
+    To carry out proofs using mutual induction, we have to define both motives beforehand. -/
+def judgment_subst_ind_type : judgment_index → Prop
+| (well_ctx Γ₀)      := ∀ {Γ t Δ} (h₀ : Γ₀ = Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t), ▷ Γ ⟦↦↦ r⟧ ++ Δ
+| (has_type Γ₀ l t₂) := ∀ {Γ t₁ Δ} (h₀ : Γ₀ = Γ ++ t₁ :: Δ) {r} (hr : Δ ▷ r : t₁), Γ ⟦↦↦ r⟧ ++ Δ ▷ l ⟦∥Γ∥ ↦ r⟧ : t₂ ⟦∥Γ∥ ↦ r⟧
+
+/-- The mutual induction proof itself. -/
+lemma judgment_subst_ind {i : judgment_index} (h : judgment i) : judgment_subst_ind_type i := by
+{ induction h,
+  case c_nil
+  { unfold judgment_subst_ind_type at *, intros Γ t Δ h₀ r hr,
+    rw list.nil_eq_append_iff at h₀, injection h₀.2 },
+  case c_cons : Γ₀ t s hw ht ihw iht
+  { unfold judgment_subst_ind_type at *, intros Γ t' Δ h₀ r hr,
+    cases Γ with t'' Γ ih',
+    { unfold ctx_subst, injection h₀ with h₁ h₂, rw h₂ at hw, exact hw },
+    { rw list.cons_append at h₀, injection h₀ with h₁ h₂,
+      rw ← h₁ at h₀ ⊢, clear h₁ t'',
+      rw h₂ at hw ht ihw iht, clear h₂ h₀ Γ₀,
+      specialize ihw rfl hr,
+      specialize iht rfl hr, unfold subst at iht,
+      unfold ctx_subst,
+      exact c_cons ihw iht } },
+  case t_conv : Γ₀ e t t' s hc ht he iht ihe
+  { unfold judgment_subst_ind_type at *, intros Γ t₁ Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht rfl hr, unfold subst at iht,
+    specialize ihe rfl hr,
+    exact t_conv (small_eq_subst_ind hc se_refl _) iht ihe },
+  case t_sort : Γ₀ n hc ih 
+  { unfold judgment_subst_ind_type at *, intros Γ t₁ Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀,
+    specialize ih rfl hr,
+    unfold subst, exact t_sort ih },
+  case t_var : Γ₀ n t hc ht ih
+  { unfold judgment_subst_ind_type at *, intros Γ t₁ Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀,
+    specialize ih rfl hr,
+    rcases nat.lt_trichotomy ∥Γ∥ n with h₁ | h₁ | h₁,
     { cases n with n, { exfalso, exact nat.not_lt_zero _ h₁ },
       rw [subst_lt h₁],
-      replace h₁ := nat.le_of_lt_succ h₁,
-      obtain ⟨m, hm⟩ := nat.le.dest h₁,
-      have := @shift_subst_inside t r₀ Γ₀.length m.succ,
-      rw [nat.add_succ, hm] at this,
+      obtain ⟨m, hm⟩ := nat.le.dest (nat.le_of_lt_succ h₁),
+      have := @shift_subst_inside t r ∥Γ∥ m.succ, rw [nat.add_succ, hm] at this,
       rw [this, nat.pred_succ], clear this,
-      refine t_var _,
-      have hm' := hm, rw [← @ctx_subst_length Γ₀ r₀] at hm',
-      rw [← hm', list.nth_aux_2],
-      rw [← hm, ← nat.add_succ, list.nth_aux_2] at h,
-      exact h },
-    { have := @shift_subst_inside t r₀ n 0,
-      rw [nat.add_zero] at this,
+      refine t_var ih _,
+      have := hm, rw [← @ctx_subst_length Γ r] at this,
+      rw [← this, list.nth_aux_2], clear this,
+      rw [← hm, ← nat.add_succ, list.nth_aux_2] at ht,
+      exact ht },
+    { have := @shift_subst_inside t r n 0, rw [nat.add_zero] at this,
       rw [h₁, subst_eq, this], clear this,
-      rw [← h₁, list.nth_aux_4] at h, injection h with h, rw h at hr₀,
-      have := has_type_shift (ctx_subst Γ₀ r₀) hr₀,
-      rw [ctx_subst_length, h₁] at this, exact this },
+      rw [← h₁, list.nth_aux_4] at ht, injection ht with ht, rw ht at hr,
+      have := has_type_shift hr ih, rw [ctx_subst_length, h₁] at this,
+      exact this },
     { rw [subst_gt h₁],
-      rw [list.nth_aux_3 _ _ _ _ h₁] at h,
-      have h₂ := nat.succ_le_of_lt h₁,
-      obtain ⟨m, hm⟩ := nat.le.dest h₂,
+      obtain ⟨m, hm⟩ := nat.le.dest (nat.succ_le_of_lt h₁),
       rw [← hm, shift_subst_above],
-      refine t_var _,
-      rw [← @ctx_subst_length Γ₀ r₀] at h₁,
+      refine t_var ih _,
+      rw [list.nth_aux_3 _ _ _ _ h₁] at ht,
+      rw [← @ctx_subst_length Γ r] at h₁,
       rw [list.nth_aux_1 _ _ _ h₁],
-      exact ctx_subst_nth h hm } },
-  case t_app : l r t₁ t₂ hl hr ihl ihr
-  { unfold subst at ihl ⊢, rw ← subst_subst,
-    exact t_app (ihl hr₀) (ihr hr₀) },
-  case t_lam : t₁ t₂ s e hs he iht ihe
-  { unfold subst at iht ⊢,
-    refine t_lam (iht hr₀) _,
-    replace ihe := ihe hr₀ (list.cons_append _ _ _).symm,
-    unfold ctx_subst list.length at ihe,
-    rw [nat.add_one, list.cons_append] at ihe,
-    exact ihe },
-  case t_pi : t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
-  { unfold subst at iht₁ ⊢,
-    refine t_pi (iht₁ hr₀) _,
-    replace iht₂ := iht₂ hr₀ (list.cons_append _ _ _).symm,
-    unfold ctx_subst list.length subst at iht₂,
-    rw [nat.add_one, list.cons_append] at iht₂,
-    exact iht₂ } }
+      exact ctx_subst_nth ht hm _ } },
+  case t_app : Γ₀ l r t₁ t₂ hl hr ihl ihr
+  { unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r' hr', rw h₀ at *, clear h₀ Γ₀,
+    specialize ihl rfl hr',
+    specialize ihr rfl hr',
+    unfold subst at ihl ⊢, rw ← subst_subst,
+    exact t_app ihl ihr },
+  case t_lam : Γ₀ t₁ t₂ s e hs he iht ihe
+  { unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht rfl hr,
+    rw ← list.cons_append at he ihe,
+    specialize ihe rfl hr, unfold ctx_subst at ihe,
+    unfold subst at iht ⊢,
+    exact t_lam iht ihe },
+  case t_pi : Γ₀ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
+  { unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀,
+    specialize iht₁ rfl hr,
+    rw ← list.cons_append at ht₂ iht₂,
+    specialize iht₂ rfl hr, unfold ctx_subst at iht₂,
+    unfold subst at iht₁ iht₂ ⊢,
+    exact t_pi iht₁ iht₂ } }
 
-lemma has_type_subst {Γ l r t₁ t₂} (hl : (t₁ :: Γ) ▷ l : t₂) (hr : Γ ▷ r : t₁) :
+lemma well_ctx_subst_ind {Γ t Δ} (h : ▷ Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t) :
+  ▷ Γ ⟦↦↦ r⟧ ++ Δ :=
+    judgment_subst_ind h rfl hr
+
+lemma has_type_subst_ind {Γ t₁ Δ l t₂} (h : Γ ++ t₁ :: Δ ▷ l : t₂) {r} (hr : Δ ▷ r : t₁) :
+  Γ ⟦↦↦ r⟧ ++ Δ ▷ l ⟦∥Γ∥ ↦ r⟧ : t₂ ⟦∥Γ∥ ↦ r⟧ :=
+    judgment_subst_ind h rfl hr
+
+lemma has_type_subst {t₁ Γ l t₂} (h : t₁ :: Γ ▷ l : t₂) {r} (hr : Γ ▷ r : t₁) :
   Γ ▷ l ⟦0 ↦ r⟧ : t₂ ⟦0 ↦ r⟧ := by
-{ rw ← list.nil_append (t₁ :: Γ) at hl,
-  have := has_type_subst_ind hl hr,
+{ rw ← list.nil_append (t₁ :: Γ) at h,
+  have := has_type_subst_ind h hr,
   unfold ctx_subst at this,
   rw list.nil_append at this,
   exact this }
 
-lemma has_type_cons {Γ e t} (h : Γ ▷ e : t) {t' s} (hw : Γ ▷ t' : sort s) :
-  (t' :: Γ) ▷ e ⟦0 ↟ 1⟧ : t ⟦0 ↟ 1⟧ := by
-{ induction' h,
-  case t_conv : Γ e t t'' s hc ht he iht ihe
-  { specialize iht hw, unfold shift at iht,
-    exact t_conv (small_eq_shift hc 1) iht (ihe hw) },
-  case t_sort : Γ n h ih
-  { clear ih, unfold shift, exact t_sort (c_cons h hw) },
-  case t_var : Γ n t h ht ih
-  { clear ih, rw shift_le (nat.zero_le _),
-    have h₁ := shift_shift_overlap t 0 n.succ 1, rw nat.zero_add at h₁, rw h₁,
-    exact t_var (c_cons h hw) ht },
-  case t_app : Γ l r t₁ t₂ hl hr ihl ihr
-  { unfold shift at ihl ⊢,
-    have h₁ := shift_subst_below t₂ r 0 1, rw ← h₁,
-    exact t_app (ihl hw) (ihr hw) },
-  case t_lam : Γ t₁ t₂ s e hs he iht ihe
-  { unfold shift at iht ⊢,
-    refine t_lam (iht hw) _, },
-  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ { sorry } }
+/- Some simple lemmas between `well_ctx` and `has_type`. -/
+
+lemma well_ctx_of_has_type {Γ e t} (h : Γ ▷ e : t) : ▷ Γ := by
+{ sorry }
+
+lemma has_type_cons {Γ e t} (h : Γ ▷ e : t) {t' s} (hw : ▷ Γ) (ht : Γ ▷ t' : sort s) :
+  (t' :: Γ) ▷ e ⟦0 ↟ 1⟧ : t ⟦0 ↟ 1⟧ :=
+    @has_type_shift _ _ _ h [t'] (c_cons hw ht)
 
 lemma has_type_of_well_ctx_nth {Γ} (hw : ▷ Γ) {n t} (h : list.nth Γ n = option.some t) :
   ∃ s, (Γ ▷ t ⟦0 ↟ n.succ⟧ : sort s) := by
@@ -1210,16 +1219,15 @@ lemma has_type_of_well_ctx_nth {Γ} (hw : ▷ Γ) {n t} (h : list.nth Γ n = opt
   induction' hw,
   case c_nil { intros, injections },
   case c_cons : Γ t s hw ht ihw iht
-  { intros n t',
-    clear iht,
+  { intros n t', clear iht,
     cases n with n,
     { intros h, injection h with h,
-      have h₁ := has_type_cons ht ht, unfold shift at h₁,
+      have h₁ := has_type_cons ht hw ht, unfold shift at h₁,
       rw h at h₁ ⊢,
       exact ⟨s, h₁⟩ },
     { intros h, unfold list.nth at h,
       obtain ⟨s, hs⟩ := ihw h,
-      have h₁ := has_type_cons hs ht, unfold shift at h₁,
+      have h₁ := has_type_cons hs hw ht, unfold shift at h₁,
       have h₂ := shift_shift_overlap t' 0 n.succ 1, rw nat.zero_add at h₂,
       rw h₂ at h₁,
       exact ⟨s, h₁⟩ } } }
@@ -1230,7 +1238,7 @@ inductive small_eq_ctx : ctx → ctx → Prop
 | sec_cons {t t' Γ Γ'} : small_eq t t' → small_eq_ctx Γ Γ' → small_eq_ctx (t :: Γ) (t' :: Γ')
 open small_eq_ctx
 
-local notation Γ ` ~~c ` Γ' := small_eq_ctx Γ Γ'
+local notation Γ ` ~~c `:50 Γ':50 := small_eq_ctx Γ Γ'
 
 lemma small_eq_ctx_refl (Γ) : Γ ~~c Γ := by
 { induction Γ with t Γ ih, exacts [sec_nil, sec_cons se_refl ih] }
@@ -1258,8 +1266,6 @@ lemma small_eq_ctx_elem {Γ Γ' n t} (he : Γ ~~c Γ') (h : Γ.nth n = option.so
       exact ⟨t₁', rfl, h₁⟩ },
     { unfold list.nth at h ⊢,
       exact ih h } } }
-
--- I NEED SOMETHING LIKE "well_ctx_of_has_type"...
 
 /-- A term has equal types under equal contexts. -/
 lemma has_type_small_eq_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ') (he : Γ ~~c Γ') : Γ' ▷ e : t := by
