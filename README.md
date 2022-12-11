@@ -1,6 +1,6 @@
 ## Main results
 
-Confluence, unique typing, and type preservation: in [`lemmas.lean`](src/lemmas.lean).
+Confluence, unique typing, term classification and type preservation: in [`lemmas.lean`](src/lemmas.lean).
 
 ```lean
 /-- Confluence of small-step reduction. -/
@@ -10,10 +10,10 @@ lemma small_star_confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>*
 lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_normal e₁) (h₂ : e ~>* e₂) (hn₂ : is_normal e₂) : e₁ = e₂ := ...
 
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
-lemma has_type_unique {Γ e t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e : t') : t ~~ t' := ...
+lemma has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := ...
 
 /-- Small-step reduction preserves type. -/
-lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ ▷ e' : t) := ...
+lemma has_type_small_star {Γ e t} (h : Γ ▷ e : t) {e'} (h' : e ~>* e') : (Γ ▷ e' : t) := ...
 ```
 
 There is also a type checker in [`checker.lean`](src/checker.lean) that returns a soundness proof in addition to the result, with an example in [`main.lean`](src/main.lean). There is no parsing or pretty-printing...
@@ -70,19 +70,14 @@ This is definitely far from the optimal formalisation (especially in comparison 
 ```lean
 /- How `shift` interacts with itself. -/
 lemma shift_zero (e n) : e ⟦n ↟ 0⟧ = e := ...
-lemma shift_shift_disjoint_ind (e k a b c) : e ⟦(b + k) ↟ c⟧ ⟦k ↟ a⟧ = e ⟦k ↟ a⟧ ⟦(a + b + k) ↟ c⟧ := ...
 lemma shift_shift_disjoint (e a b c) : e ⟦b ↟ c⟧ ⟦0 ↟ a⟧ = e ⟦0 ↟ a⟧ ⟦(a + b) ↟ c⟧ := ...
 
 /- How `shift` and `subst` interact with each other. -/
-lemma shift_subst_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ e'⟧ = e ⟦(m + k) ↦ e'⟧ ⟦k ↟ n⟧ := ...
 lemma shift_subst_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ := ...
-lemma shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := ...
 lemma shift_subst_inside (e e' n m) : e ⟦0 ↟ nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ := ...
-lemma shift_subst_below_ind (e e' k n m) : e ⟦nat.succ (n + k) ↟ m⟧ ⟦k ↦ e' ⟦n ↟ m⟧⟧ = e ⟦k ↦ e'⟧ ⟦(n + k) ↟ m⟧ := ...
 lemma shift_subst_below (e e' n m) : e ⟦nat.succ n ↟ m⟧ ⟦0 ↦ e' ⟦n ↟ m⟧⟧ = e ⟦0 ↦ e'⟧ ⟦n ↟ m⟧ := ...
 
 /- How `subst` interacts with itself. -/
-lemma subst_subst_ind (e e₁ e₂ k n) : e ⟦nat.succ (n + k) ↦ e₂⟧ ⟦k ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦k ↦ e₁⟧ ⟦(n + k) ↦ e₂⟧ := ...
 lemma subst_subst (e e₁ e₂ n) : e ⟦(nat.succ n) ↦ e₂⟧ ⟦0 ↦ e₁ ⟦n ↦ e₂⟧⟧ = e ⟦0 ↦ e₁⟧ ⟦n ↦ e₂⟧ := ...
 ```
 
@@ -118,16 +113,11 @@ local notation e ` ~>* ` e' := small_star e e'
 ```lean
 lemma small_star_refl (e) : e ~>* e := ...
 lemma small_star_trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* e₃) : (e₁ ~>* e₃) := ...
-lemma small_star_app {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : app l r ~>* app l' r' := ...
-lemma small_star_lam {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : lam l r ~>* lam l' r' := ...
-lemma small_star_pi {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : pi l r ~>* pi l' r' := ...
 
 /-- Shifting respects small-step reduction. -/
-lemma small_star_shift_ind {e e'} (h : e ~>* e') (s k) : e ⟦k ↟ s⟧ ~>* e' ⟦k ↟ s⟧ := ...
 lemma small_star_shift {e e'} (h : e ~>* e') (s): e ⟦0 ↟ s⟧ ~>* e' ⟦0 ↟ s⟧ := ...
 
 /-- Substitution respects small-step reduction. -/
-lemma small_star_subst_ind {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') (k) : l ⟦k ↦ r⟧ ~>* l' ⟦k ↦ r'⟧ := ...
 lemma small_star_subst {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') : l ⟦0 ↦ r⟧ ~>* l' ⟦0 ↦ r'⟧ := ...
 
 /-- Confluence of small-step reduction. -/
@@ -135,7 +125,7 @@ lemma small_star_confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>*
 
 /-- A term is in "normal form" iff there is no other term it reduces to. -/
 def is_normal (e : expr) : Prop := ∀ e', ¬ (e ~> e')
-lemma small_star_self_of_is_normal {e e'} (hn : is_normal e) (h: e ~>* e') : e = e' := ...
+lemma small_star_eq_self_of_is_normal {e e'} (hn : is_normal e) (h: e ~>* e') : e = e' := ...
 
 /-- If a term has a normal form, it must be unique. -/
 lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_normal e₁) (h₂ : e ~>* e₂) (hn₂ : is_normal e₂) : e₁ = e₂ := ...
@@ -146,31 +136,46 @@ lemma small_star_normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : is_nor
 ### Typing rules
 
 ```lean
-/-- Typing rules. -/
-inductive has_type : ctx → expr → expr → Prop
-| t_conv {Γ e t t'} :
-  small_eq t t' →
-  has_type Γ e t →
-  has_type Γ e t'
-| t_sort {Γ n} :
-  has_type Γ (sort n) (sort (nat.succ n))
-| t_var {Γ n t} :
-  list.nth Γ n = option.some t →
-  has_type Γ (var n) (expr.shift t 0 (nat.succ n))
-| t_app {Γ l r t₁ t₂} :
-  has_type Γ l (pi t₁ t₂) →
-  has_type Γ r t₁ →
-  has_type Γ (app l r) (expr.subst t₂ 0 r)
-| t_lam {Γ t₁ t₂ s e} :
-  has_type Γ (pi t₁ t₂) (sort s) →
-  has_type (t₁ :: Γ) e t₂ →
-  has_type Γ (lam t₁ e) (pi t₁ t₂)
-| t_pi {Γ t₁ s₁ t₂ s₂} :
-  has_type Γ t₁ (sort s₁) →
-  has_type (t₁ :: Γ) t₂ (sort s₂) →
-  has_type Γ (pi t₁ t₂) (sort (max s₁ s₂))
+/-- Lean 3 does not have good specialised support for mutually inductive types. -/
+inductive judgment_index : Type
+| well_ctx : ctx →               judgment_index
+| has_type : ctx → expr → expr → judgment_index
+open judgment_index
 
-local notation Γ ` ▷ ` e ` : ` t := has_type Γ e t
+/-- Typing rules. -/
+inductive judgment : judgment_index → Prop
+| c_nil :
+  judgment (well_ctx [])
+| c_cons {Γ t s} :
+  judgment (has_type Γ t (sort s)) →
+  judgment (well_ctx (t :: Γ))
+| t_conv {Γ e t t' s} :
+  defeq t t' →
+  judgment (has_type Γ t' (sort s)) →
+  judgment (has_type Γ e t) →
+  judgment (has_type Γ e t')
+| t_sort {Γ n} :
+  judgment (well_ctx Γ) →
+  judgment (has_type Γ (sort n) (sort (nat.succ n)))
+| t_var {Γ n t} :
+  judgment (well_ctx Γ) →
+  list.nth Γ n = option.some t →
+  judgment (has_type Γ (var n) (expr.shift t 0 (nat.succ n)))
+| t_app {Γ l r t₁ t₂} :
+  judgment (has_type Γ l (pi t₁ t₂)) →
+  judgment (has_type Γ r t₁) →
+  judgment (has_type Γ (app l r) (expr.subst t₂ 0 r))
+| t_lam {Γ t₁ t₂ s e} :
+  judgment (has_type Γ (pi t₁ t₂) (sort s)) →
+  judgment (has_type (t₁ :: Γ) e t₂) →
+  judgment (has_type Γ (lam t₁ e) (pi t₁ t₂))
+| t_pi {Γ t₁ s₁ t₂ s₂} :
+  judgment (has_type Γ t₁ (sort s₁)) →
+  judgment (has_type (t₁ :: Γ) t₂ (sort s₂)) →
+  judgment (has_type Γ (pi t₁ t₂) (sort (max s₁ s₂)))
+
+local notation `▷ ` Γ            := judgment (well_ctx Γ )
+local notation Γ ` ▷ ` e ` : ` t := judgment (has_type Γ e t)
 ```
 
 <details>
@@ -178,30 +183,26 @@ local notation Γ ` ▷ ` e ` : ` t := has_type Γ e t
 <br>
 
 ```lean
+/-- Typing judgment implies context well-formedness. -/
+lemma well_ctx_of_has_type {Γ e t} (h : Γ ▷ e : t) : ▷ Γ := ...
+
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
-lemma has_type_unique {Γ e t t'} (h : Γ ▷ e : t) (h' : Γ ▷ e : t') : t ~~ t' := ...
+lemma has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := ...
 
-lemma has_type_conv {Γ e t'} (t) (h : t ~~ t') (h' : Γ ▷ e : t) : Γ ▷ e : t' := ...
-lemma has_type_sort {Γ n t} (h : Γ ▷ sort n : t) : t ~~ sort n.succ := ...
-lemma has_type_var {Γ n t} (h : Γ ▷ var n : t) : ∃ t', (list.nth Γ n = option.some t') ∧ (t ~~ t'⟦0 ↟ n.succ⟧) := ...
-lemma has_type_app {Γ l r t} (h : Γ ▷ app l r : t) : ∃ t₁ t₂, (Γ ▷ l : pi t₁ t₂) ∧ (Γ ▷ r : t₁) ∧ (t ~~ t₂ ⟦0 ↦ r⟧) := ...
-lemma has_type_lam {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) : ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := ...
-lemma has_type_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) : ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := ...
+/- How typing interacts with shifting. -/
+lemma well_ctx_shift_ind {Γ' Γ} (h : ▷ Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ) : (▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ) := ...
+lemma has_type_shift {Γ e t} (h : Γ ▷ e : t) {Δ} (hw : ▷ Δ ++ Γ) : (Δ ++ Γ ▷ e ⟦0 ↟ ∥Δ∥⟧ : t ⟦0 ↟ ∥Δ∥⟧) := ...
 
-/-- A term has equal types under equal contexts. -/
-lemma has_type_small_eq_ctx {Γ Γ' e t} (he : Γ ~~c Γ') (h : Γ ▷ e : t) : Γ' ▷ e : t := ...
+/- How typing interacts with substitution. -/
+lemma well_ctx_subst_ind {Γ t Δ} (h : ▷ Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t) : (▷ Γ ⟦↦↦ r⟧ ++ Δ) := ...
+lemma has_type_subst {t₁ Γ l t₂} (h : t₁ :: Γ ▷ l : t₂) {r} (hr : Γ ▷ r : t₁) : (Γ ▷ l ⟦0 ↦ r⟧ : t₂ ⟦0 ↦ r⟧) := ...
 
-/-- How typing interacts with shifting. -/
-lemma has_type_shift_ind (Δ : ctx) {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) : ctxshift Γ' Δ.length ++ Δ ++ Γ ▷ e ⟦Γ'.length ↟ Δ.length⟧ : t ⟦Γ'.length ↟ Δ.length⟧ := ...
-lemma has_type_shift (Δ : ctx) {Γ e t} (h : Γ ▷ e : t) : Δ ++ Γ ▷ e ⟦0 ↟ Δ.length⟧ : t ⟦0 ↟ Δ.length⟧ := ...
-
-/-- How typing interacts with substitution. -/
-lemma has_type_subst_ind {Γ Δ l r t₁ t₂} (hl : Γ ++ t₁ :: Δ ▷ l : t₂) (hr : Δ ▷ r : t₁) : ctxsubst Γ r ++ Δ ▷ l ⟦Γ.length ↦ r⟧ : t₂ ⟦Γ.length ↦ r⟧ := ...
-lemma has_type_subst {Γ l r t₁ t₂} (hl : t₁ :: Γ ▷ l : t₂) (hr : Γ ▷ r : t₁) : Γ ▷ l ⟦0 ↦ r⟧ : t₂ ⟦0 ↦ r⟧ := ...
+/-- Classification lemma: the "type" assigned to any term must have type `sort n`. -/
+lemma type_has_sort {Γ e t} (h : Γ ▷ e : t) : ∃ s, (Γ ▷ t : sort s) := ...
 
 /-- Small-step reduction preserves type. -/
-lemma has_type_small {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~> e') : (Γ ▷ e' : t) := ...
-lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ ▷ e' : t) := ...
+lemma has_type_small {Γ e t} (h : Γ ▷ e : t) {e'} (h' : e ~> e') : (Γ ▷ e' : t) := ...
+lemma has_type_small_star {Γ e t} (h : Γ ▷ e : t) {e'} (h' : e ~>* e') : (Γ ▷ e' : t) := ...
 ```
 
 </details>

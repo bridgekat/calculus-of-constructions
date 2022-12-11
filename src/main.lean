@@ -24,7 +24,7 @@ def c₁ : ctx :=
     (pi prop prop),                   -- [5]  not       : Prop → Prop
     prop,                             -- [4]  false     : Prop
     prop,                             -- [3]  true      : Prop
-    (pi (var 0) $ pi (var 0) prop),   -- [2]  equals    : setvar → setvar → Prop
+    (pi (var 1) $ pi (var 2) prop),   -- [2]  equals    : setvar → setvar → Prop
     (var 0),                          -- [1]  arbitrary : setvar
     type ]                            -- [0]  setvar    : Type
 
@@ -41,7 +41,10 @@ meta def main : io unit := do
 { io.put_str_ln c₁.to_string,
   io.put_str_ln e₁.show,
   io.put_str_ln "",
-  match e₁.check c₁ with
+  let res := do
+  { ⟨_, hw⟩ ← ctx.check c₁,
+    e₁.check c₁ hw },
+  match res with
   | sum.inl msg    := io.put_str_ln $ "Error: " ++ msg
   | sum.inr ⟨t, _⟩ := io.put_str_ln t.show
   end,
