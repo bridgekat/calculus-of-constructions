@@ -92,13 +92,16 @@ lemma test : well_founded (nat.lt) :=
       case step : y hy { apply h, exact nat.lt_of_succ_le hy } } }⟩
 
 /-
-case t_conv : Γ e t t' s hc ht he iht ihe { sorry },
-case t_sort : Γ n hc ih { sorry },
-case t_var : Γ n t hc ht ih { sorry },
-case t_app : Γ l r t₁ t₂ hl hr ihl ihr { sorry },
-case t_lam : Γ t₁ t₂ s e hs he iht ihe { sorry },
-case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ { sorry }
+case t_conv : Γ e t t' s hc ht he iht ihe { dedup, sorry },
+case t_sort : Γ n hw ih { dedup, sorry },
+case t_var : Γ n t hw ht ih { dedup, sorry },
+case t_app : Γ l r t₁ t₂ hl hr ihl ihr { dedup, sorry },
+case t_lam : Γ t₁ t₂ s e hs he iht ihe { dedup, sorry },
+case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ { dedup, sorry }
 -/
+
+#check @classical.choice
+#check @classical.indefinite_description
 
 end
 end coc

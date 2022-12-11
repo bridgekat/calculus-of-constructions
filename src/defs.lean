@@ -71,12 +71,12 @@ inductive small_star : expr → expr → Prop
 open small_star
 
 /-- Symmetric transitive closure of small-step reduction rules. -/
-inductive small_eq : expr → expr → Prop
-| se_refl  {e}        :                                   small_eq e e
-| se_step  {e₁ e₂}    : small e₁ e₂ →                     small_eq e₁ e₂
-| se_symm  {e₁ e₂}    : small_eq e₁ e₂ →                  small_eq e₂ e₁
-| se_trans {e₁ e₂ e₃} : small_eq e₁ e₂ → small_eq e₂ e₃ → small_eq e₁ e₃
-open small_eq
+inductive defeq : expr → expr → Prop
+| de_refl  {e}        :                             defeq e e
+| de_step  {e₁ e₂}    : small e₁ e₂ →               defeq e₁ e₂
+| de_symm  {e₁ e₂}    : defeq e₁ e₂ →               defeq e₂ e₁
+| de_trans {e₁ e₂ e₃} : defeq e₁ e₂ → defeq e₂ e₃ → defeq e₁ e₃
+open defeq
 
 /-- Contexts (precontexts) -/
 def ctx : Type := list expr
@@ -97,11 +97,10 @@ inductive judgment : judgment_index → Prop
 | c_nil :
   judgment (well_ctx [])
 | c_cons {Γ t s} :
-  judgment (well_ctx Γ) →
   judgment (has_type Γ t (sort s)) →
   judgment (well_ctx (t :: Γ))
 | t_conv {Γ e t t' s} :
-  small_eq t t' →
+  defeq t t' →
   judgment (has_type Γ t' (sort s)) →
   judgment (has_type Γ e t) →
   judgment (has_type Γ e t')

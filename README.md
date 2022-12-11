@@ -208,4 +208,6 @@ lemma has_type_small_star {Γ e e' t} (h : Γ ▷ e : t) (h' : e ~>* e') : (Γ �
 
 ## References
 
+CoC rules described here follow the presentation in [Strong Normalization for the Calculus of Constructions](https://arxiv.org/pdf/2210.11240.pdf).
+
 Confluence proof follows the Tait and Martin-Löf technique as described in [An Intuitionistic Theory of Types](https://archive-pml.github.io/martin-lof/pdfs/An-Intuitionistic-Theory-of-Types-1972.pdf).
