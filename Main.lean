@@ -1,18 +1,16 @@
-import system.io
-import checker
+import Coc.Defs
 
-namespace coc
+namespace Coc
 section
 
-open expr
-open ctx
+open Expr
 
 -- Examples adapted from ApiMu (FOLContext).
 def prop := sort 0
 def type := sort 1
-def bin := λ a f b, app (app f a) b
+def bin := fun a f b => app (app f a) b
 
-def c₁ : ctx :=
+def c₁ : Ctx :=
   [ (pi (var 12) $ pi (var 13) prop), -- [13] mem       : setvar → setvar → Prop
     (pi (pi (var 11) prop) prop),     -- [12] unique    : (setvar → Prop) → Prop
     (pi (pi (var 10) prop) prop),     -- [11] exists    : (setvar → Prop) → Prop
@@ -37,21 +35,16 @@ def e₁ :=
             (var 8) (bin (bin (var 0) (var 4) (var 2))
               (var 11) (app (app (var 3) (var 2)) (var 0))))
 
-meta def main : io unit := do
-{ io.put_str_ln c₁.to_string,
-  io.put_str_ln e₁.show,
-  io.put_str_ln "",
+def main : IO Unit := do
+  println! "{toString c₁}";
+  println! "{toString e₁}";
+  println! "";
+  /-
   let res := do
-  { ⟨_, hw⟩ ← ctx.check c₁,
-    e₁.check c₁ hw },
+    _, hw ← Ctx.check c₁;
+    e₁.check c₁ hw;
   match res with
-  | sum.inl msg    := io.put_str_ln $ "Error: " ++ msg
-  | sum.inr ⟨t, _⟩ := io.put_str_ln t.show
-  end,
-  io.put_str_ln "",
-  return () }
-
-#eval main
-
-end
-end coc
+    | .inl msg    => println! "Error: {msg}"
+    | .inr ⟨t, _⟩ => println! "{toString t}"
+  println! "";
+  -/

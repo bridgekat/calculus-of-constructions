@@ -1,8 +1,0 @@
-[package]
-name = "calculus-of-constructions"
-version = "0.1"
-lean_version = "leanprover-community/lean:3.49.1"
-path = "src"
-
-[dependencies]
-mathlib = {git = "https://github.com/leanprover-community/mathlib", rev = "d6aae1bcbd04b8de2022b9b83a5b5b10e10c777d"}
