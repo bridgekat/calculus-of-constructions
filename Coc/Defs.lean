@@ -50,8 +50,7 @@ def Expr.shift : Expr → Nat → Nat → Expr
   | lam t e,  n, m => .lam (Expr.shift t n m) (Expr.shift e (Nat.succ n) m)
   | pi t₁ t₂, n, m => .pi (Expr.shift t₁ n m) (Expr.shift t₂ (Nat.succ n) m)
 
-/-- Replace all variables at level = `n` by an expression `e'`
-    (when deleting the outermost layer of binder). -/
+/-- Replace all variables at level = `n` by an expression `e'`. -/
 def Expr.subst : Expr → Nat → Expr → Expr
   | sort s,   _, _  => .sort s
   | var v,    n, e' => if n < v then .var (Nat.pred v) else if n = v then Expr.shift e' 0 n else .var v
@@ -125,6 +124,45 @@ inductive Judgment : JudgmentIndex → Prop
     Judgment (.hasType Γ t₁ (.sort s₁)) →
     Judgment (.hasType (t₁ :: Γ) t₂ (.sort s₂)) →
     Judgment (.hasType Γ (.pi t₁ t₂) (.sort (max s₁ s₂)))
+
+mutual
+
+/-- Typing rules. -/
+inductive WellCtx : Ctx → Prop
+  | nil :
+    WellCtx []
+  | cons {Γ t s} :
+    HasType Γ t (.sort s) →
+    WellCtx (t :: Γ)
+
+/-- Typing rules. -/
+inductive HasType : Ctx → Expr → Expr → Prop
+  | conv {Γ e t t' s} :
+    Defeq t t' →
+    HasType Γ t' (.sort s) →
+    HasType Γ e t →
+    HasType Γ e t'
+  | sort {Γ n} :
+    WellCtx Γ →
+    HasType Γ (.sort n) (.sort (Nat.succ n))
+  | var {Γ n t} :
+    WellCtx Γ →
+    List.get? Γ n = some t →
+    HasType Γ (.var n) (Expr.shift t 0 (Nat.succ n))
+  | app {Γ l r t₁ t₂} :
+    HasType Γ l (.pi t₁ t₂) →
+    HasType Γ r t₁ →
+    HasType Γ (.app l r) (Expr.subst t₂ 0 r)
+  | lam {Γ t₁ t₂ s e} :
+    HasType Γ (.pi t₁ t₂) (.sort s) →
+    HasType (t₁ :: Γ) e t₂ →
+    HasType Γ (.lam t₁ e) (.pi t₁ t₂)
+  | pi {Γ t₁ s₁ t₂ s₂} :
+    HasType Γ t₁ (.sort s₁) →
+    HasType (t₁ :: Γ) t₂ (.sort s₂) →
+    HasType Γ (.pi t₁ t₂) (.sort (max s₁ s₂))
+
+end
 
 #eval Lean.Meta.getEqnsFor? ``Expr.size
 #eval Lean.Meta.getEqnsFor? ``Expr.shift

@@ -62,34 +62,45 @@ scoped notation e " ⟦" n:80 " ↟ " m:79 "⟧"  => shift e n m
 /- Uninteresting `shift` lemmas for supporting case analysis. -/
 
 theorem shift_le {v n m} (h : n ≤ v) : (var v) ⟦n ↟ m⟧ = var (v + m) := by
-  unfold shift; split_ifs; eq_refl
+  unfold shift
+  split <;> eq_refl
 
 theorem shift_gt {v n m} (h : v < n) : (var v) ⟦n ↟ m⟧ = var v := by
-  unfold shift; split_ifs with hif; exfalso; exact not_le_of_lt h hif; eq_refl
+  unfold shift
+  split
+  case inl hif => exfalso; exact not_le_of_lt h hif
+  case inr hif => eq_refl
 
 /- Uninteresting `subst` lemmas for supporting case analysis. -/
 
 theorem subst_lt {v n e'} (h : n < v) : (var v) ⟦n ↦ e'⟧ = var (Nat.pred v) := by
-  unfold subst; split_ifs; eq_refl
+  unfold subst
+  split <;> eq_refl
 
 theorem subst_eq {n e'} : (var n) ⟦n ↦ e'⟧ = e' ⟦0 ↟ n⟧ := by
-  unfold subst; split_ifs with hif₁ hif₂
-  . exfalso; exact Nat.lt_irrefl _ hif₁
-  . eq_refl
-  . exfalso; exact hif₂ rfl
+  unfold subst
+  split
+  case inl hif₁ => exfalso; exact Nat.lt_irrefl _ hif₁
+  case inr hif₂ =>
+    split
+    case inl hif₂ => eq_refl
+    case inr hif₂ => exfalso; exact hif₂ rfl
 
 theorem subst_gt {v n e'} (h : v < n) : (var v) ⟦n ↦ e'⟧ = var v := by
-  unfold subst; split_ifs with hif₁ hif₂
-  . exfalso; exact Nat.lt_irrefl _ (Nat.lt_trans h hif₁)
-  . rw [hif₂] at h; exfalso; exact Nat.lt_irrefl _ h
-  . eq_refl
+  unfold subst
+  split
+  case inl hif₁ => exfalso; exact Nat.lt_irrefl _ (Nat.lt_trans h hif₁)
+  case inr hif₂ =>
+    split
+    case inl hif₂ => rw [hif₂] at h; exfalso; exact Nat.lt_irrefl _ h
+    case inr hif₂ => eq_refl
 
 /- How `shift` interacts with itself. -/
 
 theorem shift_zero (e n) : e ⟦n ↟ 0⟧ = e := by
   induction e generalizing n
   case sort s => unfold shift; eq_refl
-  case var v => cases v <;> unfold shift <;> split_ifs <;> simp
+  case var v => cases v <;> unfold shift <;> split <;> simp
   case app l r ihl ihr => unfold shift; rw [ihl, ihr]
   case lam t e iht ihe => unfold shift; rw [iht, ihe]
   case pi t₁ t₂ iht₁ iht₂ => unfold shift; rw [iht₁, iht₂]
@@ -169,7 +180,7 @@ theorem shift_subst_above_ind (e e' k n m) : e ⟦k ↟ n⟧ ⟦(n + m + k) ↦ 
 theorem shift_subst_above (e e' n m) : e ⟦0 ↟ n⟧ ⟦(n + m) ↦ e'⟧ = e ⟦m ↦ e'⟧ ⟦0 ↟ n⟧ :=
   shift_subst_above_ind e e' 0 n m
 
-theorem shift_subst_insi.ind (e e' k n m) : e ⟦k ↟ Nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := by
+theorem shift_subst_inside_ind (e e' k n m) : e ⟦k ↟ Nat.succ (n + m)⟧ ⟦(n + k) ↦ e'⟧ = e ⟦k ↟ (n + m)⟧ := by
   induction e generalizing k
   case sort s => dsimp only [shift, subst]
   case var v =>
@@ -186,7 +197,7 @@ theorem shift_subst_insi.ind (e e' k n m) : e ⟦k ↟ Nat.succ (n + m)⟧ ⟦(n
   case pi t₁ t₂ ht₁ ht₂ => dsimp only [shift, subst]; rw [ht₁, ← Nat.add_succ n k, ht₂]
 
 theorem shift_subst_inside (e e' n m) : e ⟦0 ↟ Nat.succ (n + m)⟧ ⟦n ↦ e'⟧ = e ⟦0 ↟ (n + m)⟧ :=
-  shift_subst_insi.ind e e' 0 n m
+  shift_subst_inside_ind e e' 0 n m
 
 theorem shift_subst_below_ind (e e' k n m) : e ⟦Nat.succ (n + k) ↟ m⟧ ⟦k ↦ e' ⟦n ↟ m⟧⟧ = e ⟦k ↦ e'⟧ ⟦(n + k) ↟ m⟧ := by
   induction e generalizing k
@@ -299,7 +310,7 @@ theorem Red1.shift_ind (n e e' k) (h : e ~>₁ e') : e ⟦k ↟ n⟧ ~>₁ e' �
   apply size_wf.induction e; intros e ih e' k h
   cases e
   case sort s => cases h; dsimp only [shift]; exact Red1.refl
-  case var v => cases h; cases v <;> (try split_ifs) <;> exact Red1.refl
+  case var v => cases h; cases v <;> (try split) <;> exact Red1.refl
   case app l r =>
     cases h
     case beta t e e' r' he hr =>
@@ -330,7 +341,7 @@ theorem Red1.subst_ind {l l'} (hl : l ~>₁ l') {r r'} (hr : r ~>₁ r') (k) : l
   case sort s => cases hl₀; dsimp only [subst]; exact .sort
   case var v =>
     cases hl₀; dsimp only [subst]
-    split_ifs <;> try (exact Red1.refl)
+    repeat split <;> try (exact Red1.refl)
     exact Red1.shift k hr₀
   case app l r =>
     cases hl₀
@@ -406,25 +417,22 @@ inductive RedN : Nat → Expr → Expr → Prop
 
 scoped notation e " ~>⟦" n:50 "⟧ " e':50 => RedN n e e'
 
-theorem RedN_refl {e} : e ~>⟦0⟧ e :=
-  .refl
-
-theorem RedN_trans {n m e₁ e₂ e₃} (h₁ : e₁ ~>⟦n⟧ e₂) (h₂ : e₂ ~>⟦m⟧ e₃) : (e₁ ~>⟦n + m⟧ e₃) := by
+theorem RedN.trans {n m e₁ e₂ e₃} (h₁ : e₁ ~>⟦n⟧ e₂) (h₂ : e₂ ~>⟦m⟧ e₃) : (e₁ ~>⟦n + m⟧ e₃) := by
   induction m generalizing e₃
   case zero      => cases h₂; exact h₁
   case succ m ih => rcases h₂ with _ | ⟨h₂₁, h₂₂⟩; exact .step (ih h₂₁) h₂₂
 
 /-- Shifting respects n-step reduction. -/
-theorem RedN_shift_ind {n e e'} (h : e ~>⟦n⟧ e') (s k) : e ⟦k ↟ s⟧ ~>⟦n⟧ e' ⟦k ↟ s⟧ := by
+theorem RedN.shift_ind {n e e'} (h : e ~>⟦n⟧ e') (s k) : e ⟦k ↟ s⟧ ~>⟦n⟧ e' ⟦k ↟ s⟧ := by
   induction n generalizing e'
   case zero      => cases h; exact .refl
   case succ n ih => rcases h with _ | ⟨h₁, h₂⟩; exact .step (ih h₁) (Red1.shift_ind _ _ _ _ h₂)
 
-theorem RedN_shift {n e e'} (h : e ~>⟦n⟧ e') (s): e ⟦0 ↟ s⟧ ~>⟦n⟧ e' ⟦0 ↟ s⟧ :=
-  RedN_shift_ind h s 0
+theorem RedN.shift {n e e'} (h : e ~>⟦n⟧ e') (s): e ⟦0 ↟ s⟧ ~>⟦n⟧ e' ⟦0 ↟ s⟧ :=
+  RedN.shift_ind h s 0
 
 /-- Substitution respects n-step reduction. -/
-theorem RedN_subst_ind {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') (k) : l ⟦k ↦ r⟧ ~>⟦n + m⟧ l' ⟦k ↦ r'⟧ := by
+theorem RedN.subst_ind {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') (k) : l ⟦k ↦ r⟧ ~>⟦n + m⟧ l' ⟦k ↦ r'⟧ := by
   induction n generalizing l'
   case zero =>
     cases hl
@@ -440,22 +448,12 @@ theorem RedN_subst_ind {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧
     rw [Nat.succ_add]
     exact .step (ih hl₁) (Red1.subst_ind hl₂ Red1.refl _)
 
-theorem RedN_subst {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') : l ⟦0 ↦ r⟧ ~>⟦n + m⟧ l' ⟦0 ↦ r'⟧ :=
-  RedN_subst_ind hl hr 0
+theorem RedN.subst {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r') : l ⟦0 ↦ r⟧ ~>⟦n + m⟧ l' ⟦0 ↦ r'⟧ :=
+  RedN.subst_ind hl hr 0
 
 /- Main part. -/
 namespace RedNConfluent
 section
-
-/-
-#check toLex
-#check ofLex
-#check (Prod.lex Nat.lt_wfRel Nat.lt_wfRel).wf
-#check Prod.Lex.lt_iff
-#check Prod.Lex.le_iff
-#check Prod.Lex.left
-#check Prod.Lex.right
--/
 
 /-- Auxiliary grid structure for proving confluence of `RedN`. -/
 structure Aux (n m : Nat) (a b c : Expr) (grid : Nat → Nat → Expr) (cur : Nat × Nat) : Prop :=
@@ -468,13 +466,13 @@ def update (grid : Nat → Nat → Expr) (i j : Nat) (e : Expr) : Nat → Nat �
   fun i' j' => if i' = i then (if j' = j then e else grid i' j') else grid i' j'
 
 theorem update_eq {g i j e} : update g i j e i j = e := by
-  unfold update; split_ifs <;> trivial
+  unfold update; (repeat split) <;> trivial
 
 theorem update_ne_fst {g i j e i' j'} (h : i' ≠ i) : update g i j e i' j' = g i' j' := by
-  unfold update; split_ifs <;> trivial
+  unfold update; split <;> trivial
 
 theorem update_ne_snd {g i j e i' j'} (h : j' ≠ j) : update g i j e i' j' = g i' j' := by
-  unfold update; split_ifs <;> trivial
+  unfold update; split <;> trivial
 
 /-- Fill the zeroth row and column. -/
 theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux n m a b c g (0, 0) := by
@@ -484,13 +482,13 @@ theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux 
     rcases hb with hb | _
     induction m generalizing c
     case zero =>
-      cases hc; use fun _ _ => a; apply Aux.mk <;> try eq_refl
+      cases hc; use fun _ _ => a; constructor <;> try eq_refl
       intros _ _ h; exfalso; exact Nat.not_lt_zero _ h
       intros _ _ _ h; exfalso; exact Nat.not_lt_zero _ h
     case succ m ihm =>
       rcases hc with _ | @⟨n, c₁, c₂, c₃, hc₁, hc₂⟩
       obtain ⟨g, ha, hb, hc, goDown, goRight⟩ := ihm hc₁
-      use update g 0 m.succ c; apply Aux.mk
+      use update g 0 m.succ c; constructor
       . rw [update_ne_snd (Nat.succ_ne_zero _).symm]; exact ha
       . rw [update_ne_snd (Nat.succ_ne_zero _).symm]; exact ha
       . rw [update_eq]
@@ -505,7 +503,7 @@ theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux 
   case succ n ihn =>
     rcases hb with _ | @⟨m, b₁, b₂, b₃, hb₁, hb₂⟩
     obtain ⟨g, ha, hb, hc, goDown, goRight⟩ := ihn hb₁ hc
-    use update g n.succ 0 b; apply Aux.mk
+    use update g n.succ 0 b; constructor
     . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact ha
     . rw [update_eq]
     . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact hc
@@ -613,7 +611,7 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
 
   -- Modify grid, prove invariants.
   use update g i.succ j.succ d'
-  apply Aux.mk
+  constructor
   . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact ha
   . rw [update_ne_snd (Nat.succ_ne_zero _).symm]; exact hb
   . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact hc
@@ -691,7 +689,7 @@ scoped notation e " ~~ " e':50  => Defeq e e'
 instance coeSmallToSmallStar {e₁ e₂} : Coe (Small e₁ e₂) (SmallStar e₁ e₂) := ⟨.step .refl⟩
 instance coeSmallToDefeq {e₁ e₂} : Coe (Small e₁ e₂) (Defeq e₁ e₂) := ⟨.step⟩
 
-@[trans] theorem SmallStar.trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* e₃) : (e₁ ~>* e₃) := by
+theorem SmallStar.trans {e₁ e₂ e₃} (h₁ : e₁ ~>* e₂) (h₂ : e₂ ~>* e₃) : (e₁ ~>* e₃) := by
   induction h₂
   case refl             => exact h₁
   case step _ _ _ h₃ ih => exact .step ih h₃
@@ -713,7 +711,7 @@ theorem pi_small_star_aux {l l' r r'} (hl : l ~>* l') (hr : r ~>* r') : pi l r ~
 
 /- Equivalence of formulations. -/
 
-theorem Red1.of_Small {e₁ e₂} (h : e₁ ~> e₂) : (e₁ ~>₁ e₂) :=
+theorem Red1.of_small {e₁ e₂} (h : e₁ ~> e₂) : (e₁ ~>₁ e₂) :=
   h.recOn
     (.beta .refl .refl)
     (fun _ ihl => .app ihl .refl)
@@ -735,7 +733,7 @@ theorem SmallStar.of_red_1 {e₁ e₂} (h : e₁ ~>₁ e₂) : e₁ ~>* e₂ := 
 theorem RedN.of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : ∃ n, (e₁ ~>⟦n⟧ e₂) := by
   induction h
   case refl => exact ⟨_, .refl⟩
-  case step e₃ h₁ h₂ ih => rcases ih with ⟨n, ih⟩; exact ⟨_, .step ih (Red1.of_Small h₂)⟩
+  case step e₃ h₁ h₂ ih => rcases ih with ⟨n, ih⟩; exact ⟨_, .step ih (Red1.of_small h₂)⟩
 
 theorem SmallStar.of_red_n {e₁ e₂ n} (h : e₁ ~>⟦n⟧ e₂) : e₁ ~>* e₂ := by
   induction h
@@ -744,7 +742,7 @@ theorem SmallStar.of_red_n {e₁ e₂ n} (h : e₁ ~>⟦n⟧ e₂) : e₁ ~>* e�
 
 /-- Shifting respects Small-step reduction. -/
 theorem SmallStar.shift_ind {e e'} (h : e ~>* e') (s k) : e ⟦k ↟ s⟧ ~>* e' ⟦k ↟ s⟧ :=
-  let ⟨n, hn⟩ := RedN.of_small_star h; SmallStar.of_red_n (RedN_shift_ind hn s k)
+  let ⟨n, hn⟩ := RedN.of_small_star h; SmallStar.of_red_n (RedN.shift_ind hn s k)
 
 theorem SmallStar.shift {e e'} (h : e ~>* e') (s): e ⟦0 ↟ s⟧ ~>* e' ⟦0 ↟ s⟧ :=
   SmallStar.shift_ind h s 0
@@ -753,7 +751,7 @@ theorem SmallStar.shift {e e'} (h : e ~>* e') (s): e ⟦0 ↟ s⟧ ~>* e' ⟦0 �
 theorem SmallStar.subst_ind {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') (k) : l ⟦k ↦ r⟧ ~>* l' ⟦k ↦ r'⟧ :=
   let ⟨nl, hnl⟩ := RedN.of_small_star hl
   let ⟨nr, hnr⟩ := RedN.of_small_star hr
-  SmallStar.of_red_n (RedN_subst_ind hnl hnr k)
+  SmallStar.of_red_n (RedN.subst_ind hnl hnr k)
 
 theorem SmallStar.subst {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') : l ⟦0 ↦ r⟧ ~>* l' ⟦0 ↦ r'⟧ :=
   SmallStar.subst_ind hl hr 0
@@ -850,72 +848,79 @@ theorem Defeq_subst {l l'} (hl : l ~~ l') {r r'} (hr : r ~~ r') : l ⟦0 ↦ r�
 theorem sort_normal {s e} (h : sort s ~>* e) : e = sort s := by
   induction h;
   case refl => eq_refl
-  case step _ _ _ _ ih => obtain ⟨s', ih⟩ := ih; rw [ih] at h; cases h
+  case step _ _ _ h ih => rw [ih] at h; cases h
 
 theorem eq_of_sort_defeq {s s'} (h : sort s ~~ sort s') : s = s' := by
   obtain ⟨e', h₁, h₂⟩ := SmallStar.of_defeq h
   have hi := sort_normal h₁
   have hi' := sort_normal h₂
-  injection (eq.trans hi.symm hi')
+  injection (Eq.trans hi.symm hi')
 
 /- Auxiliary pi lemmas (for proving the unique typing theorem). -/
 
 theorem pi_normal {l r e} (h : pi l r ~>* e) : ∃ l' r', e = pi l' r' := by
-  induction' h
-    exact ⟨l, r, rfl⟩
-    obtain ⟨l', r', ih⟩ := ih, rw ih at h
-    cases' h, exacts [⟨e, t₂, rfl⟩, ⟨t₁, e, rfl⟩]
+  induction h
+  case refl => exact ⟨l, r, rfl⟩
+  case step t₁ t₂ _ h ih =>
+    obtain ⟨l', r', ih⟩ := ih
+    rw [ih] at h
+    cases h
+    case piLeft _ t₂ _ => exact ⟨t₂, r', rfl⟩
+    case piRight _ t₂ _ => exact ⟨l', t₂, rfl⟩
 
-theorem SmallStar.of_pi_SmallStar.{l l' r r'} (h : pi l r ~>* pi l' r') : (l ~>* l') ∧ (r ~>* r') := by
-  induction' h
-  case .refl   exact ⟨.refl, .refl⟩
-  case .step : e₂ h₁ h₂ ih
-    obtain ⟨l'', r'', h''⟩ := pi_normal h₁
-    rw h'' at h₂, cases' h₂
-      obtain ⟨hl, hr⟩ := ih h'', exact ⟨.step hl h₂, hr⟩
-      obtain ⟨hl, hr⟩ := ih h'', exact ⟨hl, .step hr h₂⟩
+theorem SmallStar.of_pi_small_star {l l' r r'} (h : pi l r ~>* pi l' r') : (l ~>* l') ∧ (r ~>* r') := by
+  generalize he : pi l' r' = e; rw [he] at h
+  induction h generalizing l' r'
+  case refl => injection he with hl hr; rw [hl, hr]; exact ⟨.refl, .refl⟩
+  case step e₁ e₂ h₁ h₂ ih =>
+    obtain ⟨l'', r'', h''⟩ := pi_normal h₁; subst h''; subst he
+    cases h₂
+    case piLeft h'' => obtain ⟨hl, hr⟩ := ih rfl; exact ⟨.step hl h'', hr⟩
+    case piRight h'' => obtain ⟨hl, hr⟩ := ih rfl; exact ⟨hl, .step hr h''⟩
 
 theorem Defeq_of_pi_Defeq {l l' r r'} (h : pi l r ~~ pi l' r') : (l ~~ l') ∧ (r ~~ r') := by
   obtain ⟨e, h₁, h₂⟩ := SmallStar.of_defeq h
   obtain ⟨l'', r'', he⟩ := pi_normal h₁
-  rw he at h₁ h₂
-  have hi := SmallStar.of_pi_SmallStar.h₁
-  have hi' := SmallStar.of_pi_SmallStar.h₂
-  exact ⟨Defeq.of_small_star. hi.1 hi'.1, Defeq.of_small_star. hi.2 hi'.2⟩
+  rw [he] at h₁ h₂
+  have hi := SmallStar.of_pi_small_star h₁
+  have hi' := SmallStar.of_pi_small_star h₂
+  exact ⟨Defeq.of_small_stars hi.1 hi'.1, Defeq.of_small_stars hi.2 hi'.2⟩
 
-scoped notation `▷ `:50 Γ:50                  := judgment (well_ctx Γ)
-scoped notation Γ ` ▷ `:50 e:50 ` : `:50 t:50 := judgment (has_type Γ e t)
+scoped notation "▷ " Γ:50               => Judgment (JudgmentIndex.wellCtx Γ)
+scoped notation Γ " ▷ " e:50 " : " t:50 => Judgment (JudgmentIndex.hasType Γ e t)
 
 /-- Typing judgment implies context well-formedness. -/
 theorem well_ctx_of_has_type {Γ e t} (h : Γ ▷ e : t) : ▷ Γ := by
-  induction' h; assumption
+  generalize hi : JudgmentIndex.hasType Γ e t = i; rw [hi] at h
+  induction h <;> 
+
 
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
 theorem has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := by
   revert_all, intros Γ₀ e₀ t₀ h₀ t' h'
-  induction' h₀
+  induction h₀
   case t_conv : Γ e t₁ t₂ s hc ht he iht ihe
     exact .trans (.symm hc) (ihe h')
   case t_sort : Γ n h ih
     clear ih
-    induction' h'
+    induction h'
     case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' h) hc'
     case t_sort :   eq_refl
   case t_var : Γ n t h ht ih
     clear ih
-    induction' h'
+    induction h'
     case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' h ht) hc'
     case t_var : _ _ _ _ ht' _   injection eq.trans ht.symm ht' with ht, rw ht
   case t_app : Γ l r t₁ t₂ hl hr ihl ihr
-    induction' h'
+    induction h'
     case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' hl hr (λ _, ihl) (λ _, ihr)) hc'
     case t_app : _ _ _ _ _ h' _ _ _   exact Defeq_subst (Defeq_of_pi_Defeq (ihl h')).2 .refl
   case t_lam : Γ t₁ t₂ s e hs he iht ihe
-    induction' h'
+    induction h'
     case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' hs he (λ _, iht) (λ _, ihe)) hc'
     case t_lam : _ _ _ _ _ _ he' _ _   exact pi_defeq_aux .refl (ihe he')
   case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
-    induction' h'
+    induction h'
     case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' ht₁ ht₂ (λ _, iht₁) (λ _, iht₂)) hc'
     case t_pi : _ _ _ _ _ ht₁' ht₂' _ _
       rw [eq_of_sort_defeq (iht₁ ht₁'), eq_of_sort_defeq (iht₂ ht₂')]
@@ -1206,7 +1211,7 @@ theorem has_sort_aux_elim {Γ e} (h : has_sort_aux_type Γ e) : ∃ s, Γ ▷ e 
   case pi : t₁ t₂   exact h.1
 
 theorem has_sort_aux_pi {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) : (∃ s, Γ ▷ t₁ : sort s) ∧ (∃ s, t₁ :: Γ ▷ t₂ : sort s) := by
-  induction' h
+  induction h
   case t_conv : _ _ _ _ hc _ _ _ ihe   exact ihe
   case t_pi : _ _ s₁ _ s₂ ht₁ ht₂ _ _   exact ⟨⟨s₁, ht₁⟩, ⟨s₂, ht₂⟩⟩
 
@@ -1225,7 +1230,7 @@ theorem has_sort_aux {Γ e} (h : ∃ s, Γ ▷ e : sort s) : has_sort_aux_type �
 
 /-- Classification lemma: the "type" assigned to any term must have type `sort n`. -/
 theorem type_has_sort {Γ e t} (h : Γ ▷ e : t) : ∃ s, (Γ ▷ t : sort s) := by
-  induction' h
+  induction h
   case t_conv : Γ e t t' s hc ht he iht ihe   exact ⟨s, ht⟩
   case t_sort : Γ n hw ih   exact ⟨_, t_sort hw⟩
   case t_var : Γ n t hw ht ih   exact has_sort_of_well_ctx_nth hw ht
@@ -1248,7 +1253,7 @@ def is_term (Γ : ctx) (e : Expr) : Prop := ∃ t, Γ ▷ e : t ∧ ∃ s, Γ �
 
 theorem app_has_type_aux {Γ l r t} (h : Γ ▷ app l r : t) :
   ∃ t₁ t₂, (Γ ▷ l : pi t₁ t₂) ∧ (Γ ▷ r : t₁) ∧ (t ~~ t₂ ⟦0 ↦ r⟧) := by
-  induction' h
+  induction h
   case t_conv : _ _ _ _ hc _ _ _ ihe
     obtain ⟨t₁, t₂, ih₁, ih₂, ih₃⟩ := ihe
     exact ⟨t₁, t₂, ih₁, ih₂, .trans (.symm hc) ih₃⟩,
@@ -1257,7 +1262,7 @@ theorem app_has_type_aux {Γ l r t} (h : Γ ▷ app l r : t) :
 
 theorem lam_has_type_aux {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
   ∃ t₂ s, (Γ ▷ pi t₁ t₂ : sort s) ∧ (t₁ :: Γ ▷ e : t₂) ∧ (t ~~ pi t₁ t₂) := by
-  induction' h
+  induction h
   case t_conv : _ _ _ _ hc _ _ _ ihe
     obtain ⟨t₂, s, ih₁, ih₂, ih₃⟩ := ihe
     exact ⟨t₂, s, ih₁, ih₂, .trans (.symm hc) ih₃⟩
@@ -1266,7 +1271,7 @@ theorem lam_has_type_aux {Γ t₁ e t} (h : Γ ▷ lam t₁ e : t) :
 
 theorem pi_has_type_aux {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) :
   ∃ s₁ s₂, (Γ ▷ t₁ : sort s₁) ∧ (t₁ :: Γ ▷ t₂ : sort s₂) ∧ (t ~~ sort (max s₁ s₂)) := by
-  induction' h
+  induction h
   case t_conv : _ _ _ _ hc _ _ _ ihe
     obtain ⟨s₁, s₂, ih₁, ih₂, ih₃⟩ := ihe
     exact ⟨s₁, s₂, ih₁, ih₂, .trans (.symm hc) ih₃⟩
@@ -1290,14 +1295,14 @@ theorem derived_ctx_self {Γ} (hw : ▷ Γ) : Γ ~~dc Γ := by
 
 /-- A term has the same type under derived contexts. -/
 theorem has_type_of_derived_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ') (hc : Γ ~~dc Γ') : (Γ' ▷ e : t) := by
-  induction' h
+  induction h
   case t_conv : Γ e t t' s hc' ht he iht ihe
     exact t_conv hc' (iht hw hc) (ihe hw hc)
   case t_sort : Γ n hw' ih
     clear ih, exact t_sort hw
   case t_var : Γ n t hw' ht ih
     clear ih
-    induction' hc
+    induction hc
     case dc_nil   cases ht
     case dc_cons : u u' Γ Γ' s hc hx hc' ih
       rcases hw with _ | @⟨Γ', u', s', hu'⟩
@@ -1336,7 +1341,7 @@ theorem has_type_of_derived_ctx_aux {u Γ e t}
 
 /-- Small-step reduction preserves type. -/
 theorem has_type_Small {Γ e t} (h : Γ ▷ e : t) {e'} (h' : e ~> e') : (Γ ▷ e' : t) := by
-  induction' h'
+  induction h'
   case s_beta : t₁ e r
     obtain ⟨t₁', t₂', h₁, h₂, h₃⟩ := app_has_type_aux h
     obtain ⟨s, hs⟩ := type_has_sort h, clear h
