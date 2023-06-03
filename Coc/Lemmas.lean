@@ -5,7 +5,6 @@ import Mathlib.Data.Prod.Lex
 import Coc.Defs
 
 namespace Coc
-section
 
 /- Auxiliary arithmetic lemmas. -/
 
@@ -29,7 +28,7 @@ theorem Nat.le_add_right' (a b c : Nat) (h : a ≤ b) : a ≤ b + c := by
   refine @Nat.le.intro _ _ (k + c) ?_
   rw [← Nat.add_assoc, hk]
 
-/- Auxiliary list indexing lemmas. -/
+/- Auxiliary List indexing lemmas. -/
 
 theorem List.get?_aux_1 {α} (a b : List α) (n : Nat) (h : n < a.length) :
   List.get? (a ++ b) n = List.get? a n := by
@@ -52,7 +51,6 @@ theorem List.get?_aux_5 {α} (a : List α) (b : α) (c : List α) (n : Nat) :
   rw [Nat.add_comm, List.get?_append_right (Nat.le_add_left _ _), Nat.add_sub_cancel _ _]; eq_refl
 
 namespace Expr
-section
 
 /- Notations. -/
 
@@ -453,7 +451,6 @@ theorem RedN.subst {n m l l'} (hl : l ~>⟦n⟧ l') {r r'} (hr : r ~>⟦m⟧ r')
 
 /- Main part. -/
 namespace RedNConfluent
-section
 
 /-- Auxiliary grid structure for proving confluence of `RedN`. -/
 structure Aux (n m : Nat) (a b c : Expr) (grid : Nat → Nat → Expr) (cur : Nat × Nat) : Prop :=
@@ -487,13 +484,13 @@ theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux 
       intros _ _ _ h; exfalso; exact Nat.not_lt_zero _ h
     case succ m ihm =>
       rcases hc with _ | @⟨n, c₁, c₂, c₃, hc₁, hc₂⟩
-      obtain ⟨g, ha, hb, hc, goDown, goRight⟩ := ihm hc₁
+      obtain ⟨g, ha, _, hc, _, goRight⟩ := ihm hc₁
       use update g 0 m.succ c; constructor
       . rw [update_ne_snd (Nat.succ_ne_zero _).symm]; exact ha
       . rw [update_ne_snd (Nat.succ_ne_zero _).symm]; exact ha
       . rw [update_eq]
-      . intros i j hi hj h; exfalso; exact Nat.not_lt_zero _ hi
-      . intros i j hi hj h
+      . intros i j hi _ _; exfalso; exact Nat.not_lt_zero _ hi
+      . intros i j hi hj _
         rw [update_ne_snd (ne_of_lt hj), Nat.eq_zero_of_le_zero hi]
         rcases lt_or_eq_of_le (Nat.le_of_lt_succ hj) with hj | hj
         . rw [update_ne_snd (ne_of_lt (Nat.succ_lt_succ hj))]
@@ -507,7 +504,7 @@ theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux 
     . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact ha
     . rw [update_eq]
     . rw [update_ne_fst (Nat.succ_ne_zero _).symm]; exact hc
-    . intros i j hi hj h
+    . intros i j hi _ h
       rcases h with h | h
       . rw [h, update_ne_fst (ne_of_lt hi)]
         rcases lt_or_eq_of_le (Nat.le_of_lt_succ hi) with hi | hi
@@ -515,14 +512,14 @@ theorem init {n m a b c} (hb : a ~>⟦n⟧ b) (hc : a ~>⟦m⟧ c) : ∃ g, Aux 
           apply goDown i 0; exact hi; exact Nat.zero_le _; left; eq_refl
         . rw [hi, update_eq, hb]; exact hb₂
       . rw [Prod.Lex.le_iff] at h
-        rcases h with h | ⟨h₁, h₂⟩
+        rcases h with h | ⟨h₁, _⟩
         . exfalso; exact Nat.not_lt_zero _ h
         . exfalso; exact Nat.succ_ne_zero _ h₁
-    . intros i j hi hj h
+    . intros i j _ hj h
       rcases h with h | h
       . rw [h]; apply goRight 0 j; exact Nat.zero_le _; exact hj; left; eq_refl
       . rw [Prod.Lex.le_iff] at h
-        rcases h with h | ⟨h₁, h₂⟩
+        rcases h with h | ⟨_, h₂⟩
         . exfalso; exact Nat.not_lt_zero _ h
         . exfalso; exact Nat.not_succ_le_zero _ h₂
 
@@ -537,13 +534,13 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
   refine ⟨g, ha, hb, hc, ?_, ?_⟩
   intros i' j' hi' hj' h; refine (goDown i' j' hi' hj' ?_)
   rw [Prod.Lex.le_iff] at h
-  rcases h with h | h | ⟨h₁, h₂⟩
+  rcases h with h | h | ⟨h₁, _⟩
   . exact .inl h
   . exfalso; exact Nat.not_lt_zero _ h
   . exfalso; exact Nat.succ_ne_zero _ h₁
   intros i' j' hi' hj' h; refine (goRight i' j' hi' hj' ?_)
   rw [Prod.Lex.le_iff] at h
-  rcases h with h | h | ⟨h₁, h₂⟩
+  rcases h with h | h | ⟨h₁, _⟩
   . exact .inl h
   . exfalso; exact Nat.not_lt_zero _ h
   . exact .inl h₁
@@ -554,7 +551,7 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
   obtain ⟨g, ha, hb, hc, goDown, goRight⟩ := ih; refine ⟨g, ha, hb, hc, ?_, ?_⟩
   intros i' j' hi' hj' h; refine (goDown i' j' hi' hj' ?_)
   . rw [Prod.Lex.le_iff] at h
-    rcases h with h | h | ⟨h₁, h₂⟩
+    rcases h with h | h | ⟨_, h₂⟩
     . exact .inl h
     . right; rw [Prod.Lex.le_iff]
       rcases (lt_or_eq_of_le (Nat.le_of_lt_succ h)) with h | h
@@ -563,7 +560,7 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
     . left; replace h₂ : j' = 0 := Nat.eq_zero_of_le_zero h₂; rw [h₂]
   . intros i' j' hi' hj' h; refine (goRight i' j' hi' hj' ?_)
     rw [Prod.Lex.le_iff] at h
-    rcases h with h | h | ⟨h₁, h₂⟩
+    rcases h with h | h | ⟨_, h₂⟩
     . exact .inl h
     . right; rw [Prod.Lex.le_iff]
       rcases (lt_or_eq_of_le (Nat.le_of_lt_succ h)) with h | h
@@ -578,10 +575,10 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
   rcases (lt_or_le i n) with hi | hi; swap
   -- `i` overflow (no modification)
   . refine ⟨g, ha, hb, hc, ?_, ?_⟩
-    . intros i' j' hi' hj' h; refine (goDown i' j' hi' hj' ?_)
+    . intros i' j' hi' hj' _; refine (goDown i' j' hi' hj' ?_)
       rw [Prod.Lex.le_iff]; right; left
       exact Nat.succ_lt_succ (Nat.lt_of_lt_of_le hi' hi)
-    . intros i' j' hi' hj' h; refine (goRight i' j' hi' hj' ?_)
+    . intros i' j' hi' hj' _; refine (goRight i' j' hi' hj' ?_)
       rw [Prod.Lex.le_iff]; right; left
       exact Nat.lt_succ_of_le (Nat.le_trans hi' hi)
 
@@ -590,13 +587,13 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
   . refine ⟨g, ha, hb, hc, ?_, ?_⟩
     . intros i' j' hi' hj' h; refine (goDown i' j' hi' hj' ?_)
       rw [Prod.Lex.le_iff] at h
-      rcases h with h | h | ⟨h₁, h₂⟩
+      rcases h with h | h | ⟨h₁, _⟩
       . exact .inl h
       . right; rw [Prod.Lex.le_iff]; left; exact h
       . right; rw [Prod.Lex.le_iff]; right; exact ⟨h₁, Nat.le_trans hj' hj⟩
     . intros i' j' hi' hj' h; refine (goRight i' j' hi' hj' ?_)
       rw [Prod.Lex.le_iff] at h
-      rcases h with h | h | ⟨h₁, h₂⟩
+      rcases h with h | h | ⟨h₁, _⟩
       . exact .inl h
       . right; rw [Prod.Lex.le_iff]; left; exact h
       . right; rw [Prod.Lex.le_iff]; right; exact ⟨h₁, Nat.le_trans hj' hj⟩
@@ -649,14 +646,14 @@ theorem traverse {n m a b c g} (h : Aux n m a b c g (0, 0)) : ∀ cur, ∃ g', A
 
 /-- Extract conclusion from a filled grid. -/
 theorem final {n m a b c g} (h : Aux n m a b c g (n, m)) : ∃ d, (b ~>⟦m⟧ d) ∧ (c ~>⟦n⟧ d) := by
-  obtain ⟨ha, hb, hc, goDown, goRight⟩ := h
+  obtain ⟨_, hb, hc, goDown, goRight⟩ := h
   use g n m
   apply And.intro
   -- Last row
   . suffices : ∀ j, j ≤ m → (b ~>⟦j⟧ g n j); exact this m (Nat.le_refl _)
     intros j
     induction j
-    case zero => intros ih; rw [hb]; exact .refl
+    case zero => intros; rw [hb]; exact .refl
     case succ j hj =>
       intros ih; apply RedN.step (e₂ := g n j); exact hj (Nat.le_of_succ_le ih)
       apply goRight; exact Nat.le_refl _; exact Nat.lt_of_succ_le ih
@@ -665,13 +662,12 @@ theorem final {n m a b c g} (h : Aux n m a b c g (n, m)) : ∃ d, (b ~>⟦m⟧ d
   . suffices : ∀ i, i ≤ n → (c ~>⟦i⟧ g i m); exact this n (Nat.le_refl _)
     intros i
     induction i
-    case zero => intros ih; rw [hc]; exact .refl
+    case zero => intros; rw [hc]; exact .refl
     case succ i hi =>
       intros ih; apply RedN.step (e₂ := g i m); exact hi (Nat.le_of_succ_le ih)
       apply goDown; exact Nat.lt_of_succ_le ih; exact Nat.le_refl _
       right; rcases eq_or_lt_of_le ih with h | h; rw [h]; exact Prod.Lex.left _ _ (Nat.lt_of_succ_le h)
 
-end
 end RedNConfluent
 
 /-- Confluence of n-step reduction. -/
@@ -733,24 +729,24 @@ theorem SmallStar.of_red_1 {e₁ e₂} (h : e₁ ~>₁ e₂) : e₁ ~>* e₂ := 
 theorem RedN.of_small_star {e₁ e₂} (h : e₁ ~>* e₂) : ∃ n, (e₁ ~>⟦n⟧ e₂) := by
   induction h
   case refl => exact ⟨_, .refl⟩
-  case step e₃ h₁ h₂ ih => rcases ih with ⟨n, ih⟩; exact ⟨_, .step ih (Red1.of_small h₂)⟩
+  case step e₃ _ h₂ ih => rcases ih with ⟨n, ih⟩; exact ⟨_, .step ih (Red1.of_small h₂)⟩
 
 theorem SmallStar.of_red_n {e₁ e₂ n} (h : e₁ ~>⟦n⟧ e₂) : e₁ ~>* e₂ := by
   induction h
   case refl e => exact .refl
-  case step n e₁ e₂ e₃ h₁ h₂ ih => exact SmallStar.trans ih (SmallStar.of_red_1 h₂)
+  case step e₁ e₂ e₃ _ h₂ ih => exact SmallStar.trans ih (SmallStar.of_red_1 h₂)
 
 /-- Shifting respects Small-step reduction. -/
 theorem SmallStar.shift_ind {e e'} (h : e ~>* e') (s k) : e ⟦k ↟ s⟧ ~>* e' ⟦k ↟ s⟧ :=
-  let ⟨n, hn⟩ := RedN.of_small_star h; SmallStar.of_red_n (RedN.shift_ind hn s k)
+  let ⟨_, hn⟩ := RedN.of_small_star h; SmallStar.of_red_n (RedN.shift_ind hn s k)
 
 theorem SmallStar.shift {e e'} (h : e ~>* e') (s): e ⟦0 ↟ s⟧ ~>* e' ⟦0 ↟ s⟧ :=
   SmallStar.shift_ind h s 0
 
 /-- Substitution respects Small-step reduction. -/
 theorem SmallStar.subst_ind {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') (k) : l ⟦k ↦ r⟧ ~>* l' ⟦k ↦ r'⟧ :=
-  let ⟨nl, hnl⟩ := RedN.of_small_star hl
-  let ⟨nr, hnr⟩ := RedN.of_small_star hr
+  let ⟨_, hnl⟩ := RedN.of_small_star hl
+  let ⟨_, hnr⟩ := RedN.of_small_star hr
   SmallStar.of_red_n (RedN.subst_ind hnl hnr k)
 
 theorem SmallStar.subst {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') : l ⟦0 ↦ r⟧ ~>* l' ⟦0 ↦ r'⟧ :=
@@ -758,8 +754,8 @@ theorem SmallStar.subst {l l'} (hl : l ~>* l') {r r'} (hr : r ~>* r') : l ⟦0 �
 
 /-- Confluence of Small-step reduction. -/
 theorem SmallStar.confluent {a b c} (hb : a ~>* b) (hc : a ~>* c) : ∃ d, (b ~>* d) ∧ (c ~>* d) :=
-  let ⟨n, hb'⟩ := RedN.of_small_star hb
-  let ⟨m, hc'⟩ := RedN.of_small_star hc
+  let ⟨_, hb'⟩ := RedN.of_small_star hb
+  let ⟨_, hc'⟩ := RedN.of_small_star hc
   let ⟨d, hbd', hcd'⟩ := red_n_confluent hb' hc'
   ⟨d, SmallStar.of_red_n hbd', SmallStar.of_red_n hcd'⟩
 
@@ -769,7 +765,7 @@ def isNormal (e : Expr) : Prop := ∀ e', ¬ (e ~> e')
 theorem SmallStar.eq_self_of_is_normal {e e'} (hn : isNormal e) (h: e ~>* e') : e = e' := by
   induction h
   case refl => eq_refl
-  case step e₂ e₃ h₁ h₂ ih => replace hn := hn e₃; rw [ih] at hn; exfalso; exact hn h₂
+  case step e₂ e₃ _ h₂ ih => replace hn := hn e₃; rw [ih] at hn; exfalso; exact hn h₂
 
 /-- If a term has a normal form, it must be unique. -/
 theorem SmallStar.normal_unique {e e₁ e₂} (h₁ : e ~>* e₁) (hn₁ : isNormal e₁) (h₂ : e ~>* e₂) (hn₂ : isNormal e₂) :
@@ -813,10 +809,10 @@ theorem Defeq.of_small_stars {e₁ e₂ e} (h₁ : e₁ ~>* e) (h₂ : e₂ ~>* 
 
 theorem SmallStar.of_defeq {e₁ e₂} (h : e₁ ~~ e₂) : ∃ e, (e₁ ~>* e) ∧ (e₂ ~>* e) := by
   induction h
-  case refl e => exact ⟨e, .refl, .refl⟩
-  case step e₁ e₂ h => exact ⟨e₂, .step .refl h, .refl⟩
-  case symm e₁ e₂ h ih => obtain ⟨e, ih₁, ih₂⟩ := ih; exact ⟨e, ih₂, ih₁⟩
-  case trans e₁ e₂ e₃ hb hc ihb ihc =>
+  case refl e          => exact ⟨e, .refl, .refl⟩
+  case step e₁ e₂ h    => exact ⟨e₂, .step .refl h, .refl⟩
+  case symm e₁ e₂ _ ih => obtain ⟨e, ih₁, ih₂⟩ := ih; exact ⟨e, ih₂, ih₁⟩
+  case trans e₁ e₂ e₃ _ _ ihb ihc =>
     obtain ⟨b, ihb₁, ihb₂⟩ := ihb
     obtain ⟨c, ihc₁, ihc₂⟩ := ihc
     obtain ⟨d, hd₁, hd₂⟩ := SmallStar.confluent ihb₂ ihc₁
@@ -824,11 +820,11 @@ theorem SmallStar.of_defeq {e₁ e₂} (h : e₁ ~~ e₂) : ∃ e, (e₁ ~>* e) 
 
 /-- Two terms are definitionally equal iff they reduce to some same term. -/
 theorem Defeq.iff_small_star {e₁ e₂} : (e₁ ~~ e₂) ↔ ∃ e, (e₁ ~>* e) ∧ (e₂ ~>* e) :=
-  ⟨SmallStar.of_defeq, (fun ⟨e, he₁, he₂⟩ => Defeq.of_small_stars he₁ he₂)⟩
+  ⟨SmallStar.of_defeq, (fun ⟨_, he₁, he₂⟩ => Defeq.of_small_stars he₁ he₂)⟩
 
 /-- Shifting respects definitional equality. -/
 theorem Defeq.shift_ind {e e'} (h : e ~~ e') (s k) : e ⟦k ↟ s⟧ ~~ e' ⟦k ↟ s⟧ :=
-  let ⟨e', h'₁, h'₂⟩ := SmallStar.of_defeq h
+  let ⟨_, h'₁, h'₂⟩ := SmallStar.of_defeq h
   Defeq.of_small_stars (SmallStar.shift_ind h'₁ _ _) (SmallStar.shift_ind h'₂ _ _)
 
 theorem Defeq.shift {e e'} (h : e ~~ e') (s): e ⟦0 ↟ s⟧ ~~ e' ⟦0 ↟ s⟧ :=
@@ -836,8 +832,8 @@ theorem Defeq.shift {e e'} (h : e ~~ e') (s): e ⟦0 ↟ s⟧ ~~ e' ⟦0 ↟ s�
 
 /-- Substitution respects definitional equality. -/
 theorem Defeq.subst_ind {l l'} (hl : l ~~ l') {r r'} (hr : r ~~ r') (k) : l ⟦k ↦ r⟧ ~~ l' ⟦k ↦ r'⟧ :=
-  let ⟨el', hl'₁, hl'₂⟩ := SmallStar.of_defeq hl
-  let ⟨er', hr'₁, hr'₂⟩ := SmallStar.of_defeq hr
+  let ⟨_, hl'₁, hl'₂⟩ := SmallStar.of_defeq hl
+  let ⟨_, hr'₁, hr'₂⟩ := SmallStar.of_defeq hr
   Defeq.of_small_stars (SmallStar.subst_ind hl'₁ hr'₁ _) (SmallStar.subst_ind hl'₂ hr'₂ _)
 
 theorem Defeq_subst {l l'} (hl : l ~~ l') {r r'} (hr : r ~~ r') : l ⟦0 ↦ r⟧ ~~ l' ⟦0 ↦ r'⟧ :=
@@ -886,120 +882,159 @@ theorem Defeq_of_pi_Defeq {l l' r r'} (h : pi l r ~~ pi l' r') : (l ~~ l') ∧ (
   have hi' := SmallStar.of_pi_small_star h₂
   exact ⟨Defeq.of_small_stars hi.1 hi'.1, Defeq.of_small_stars hi.2 hi'.2⟩
 
-scoped notation "▷ " Γ:50               => Judgment (JudgmentIndex.wellCtx Γ)
-scoped notation Γ " ▷ " e:50 " : " t:50 => Judgment (JudgmentIndex.hasType Γ e t)
+scoped notation "▷ " Γ:50               => WellCtx Γ
+scoped notation Γ " ▷ " e:50 " : " t:50 => HasType Γ e t
 
-/-- Typing judgment implies context well-formedness. -/
-theorem well_ctx_of_has_type {Γ e t} (h : Γ ▷ e : t) : ▷ Γ := by
-  generalize hi : JudgmentIndex.hasType Γ e t = i; rw [hi] at h
-  induction h <;> 
-
+/-- Typing Judgment implies context well-formedness. -/
+theorem WellCtx_of_has_type {Γ e t} (h : Γ ▷ e : t) : ▷ Γ := by
+  -- Induction on `h`.
+  apply @HasType.recOn
+    (fun Γ _ => ▷ Γ)     -- Motive 1 (for `WellCtx`)
+    (fun Γ _ _ _ => ▷ Γ) -- Motive 2 (for `HasType`)
+    _ _ _ h
+  <;> intros <;> try trivial
+  case nil      => exact .nil
+  case cons h _ => exact .cons h
 
 /-- Every well-formed (typeable) term has a unique type, up to definitional equality. -/
 theorem has_type_unique {Γ e t} (h : Γ ▷ e : t) {t'} (h' : Γ ▷ e : t') : t ~~ t' := by
-  revert_all, intros Γ₀ e₀ t₀ h₀ t' h'
-  induction h₀
-  case t_conv : Γ e t₁ t₂ s hc ht he iht ihe
+  revert Γ e t h t' h'
+  intros Γ₀ e₀ t₀ h₀
+  -- Induction on `h₀` generalising `t'`.
+  -- TODO: make `induction` support multiple motives, so that I don't need to generalise and tidy up by hand...
+  apply @HasType.recOn
+    (fun _ _     => True)
+    (fun Γ e t _ => ∀ {t'}, (Γ ▷ e : t') -> t ~~ t')
+    _ _ _ h₀
+  <;> intros <;> try trivial
+  case conv t₁ t₂ _ hc _ _ _ ihe t' h' =>
     exact .trans (.symm hc) (ihe h')
-  case t_sort : Γ n h ih
+  case sort Γ n _ ih t' h' =>
     clear ih
-    induction h'
-    case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' h) hc'
-    case t_sort :   eq_refl
-  case t_var : Γ n t h ht ih
+    generalize hx : sort n = x; rw [hx] at h'; replace hx := hx.symm -- See: https://arxiv.org/pdf/2012.08990.pdf
+    apply @HasType.recOn
+      (fun _ _        => True)
+      (fun Γ' e' t' _ => (e' = sort n) → sort n.succ ~~ t')
+      _ _ _ h'
+    <;> intros <;> injections <;> try trivial
+    case conv hc' _ _ _ ih' he' => subst he'; exact .trans (ih' rfl) hc'
+    case sort he'               => subst he'; exact .refl
+  case var Γ n t _ ht ih t' h' =>
     clear ih
-    induction h'
-    case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' h ht) hc'
-    case t_var : _ _ _ _ ht' _   injection eq.trans ht.symm ht' with ht, rw ht
-  case t_app : Γ l r t₁ t₂ hl hr ihl ihr
-    induction h'
-    case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' hl hr (λ _, ihl) (λ _, ihr)) hc'
-    case t_app : _ _ _ _ _ h' _ _ _   exact Defeq_subst (Defeq_of_pi_Defeq (ihl h')).2 .refl
-  case t_lam : Γ t₁ t₂ s e hs he iht ihe
-    induction h'
-    case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' hs he (λ _, iht) (λ _, ihe)) hc'
-    case t_lam : _ _ _ _ _ _ he' _ _   exact pi_defeq_aux .refl (ihe he')
-  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
-    induction h'
-    case t_conv : _ _ _ _ hc' _ _ _ ih'   exact .trans (ih' ht₁ ht₂ (λ _, iht₁) (λ _, iht₂)) hc'
-    case t_pi : _ _ _ _ _ ht₁' ht₂' _ _
+    generalize hx : var n = x; rw [hx] at h'; replace hx := hx.symm
+    apply @HasType.recOn
+      (fun _ _        => True)
+      (fun Γ' e' t' _ => (Γ = Γ') → (e' = var n) → t ⟦0 ↟ n.succ⟧ ~~ t')
+      _ _ _ h'
+    <;> intros <;> injections <;> try trivial
+    case conv hc' _ _ _ ih' hΓ' he' => subst hΓ' he'; exact .trans (ih' rfl rfl) hc'
+    case var ht' _ hΓ' he'          => subst hΓ' he'; injection Eq.trans ht.symm ht' with ht; rw [ht]; exact .refl
+  case app Γ l r t₁ t₂ hl hr ihl ihr t' h' =>
+    generalize hx : app l r = x; rw [hx] at h'; replace hx := hx.symm
+    apply @HasType.recOn
+      (fun _ _        => True)
+      (fun Γ' e' t' _ => (Γ = Γ') → (e' = app l r) → t₂ ⟦0 ↦ r⟧ ~~ t')
+      _ _ _ h'
+    <;> intros <;> injections <;> try trivial
+    case conv hc' _ _ _ ih' hΓ' he' => subst hΓ' he'; exact .trans (ih' rfl rfl) hc'
+    case app h' _ _ _ hΓ' hl' hr'   => subst hΓ' hl' hr'; exact Defeq_subst (Defeq_of_pi_Defeq (ihl h')).2 .refl
+  case lam Γ t₁ t₂ s e hs he iht ihe t' h' =>
+    generalize hx : lam t₁ e = x; rw [hx] at h'; replace hx := hx.symm
+    apply @HasType.recOn
+      (fun _ _        => True)
+      (fun Γ' e' t' _ => (Γ = Γ') → (e' = lam t₁ e) → pi t₁ t₂ ~~ t')
+      _ _ _ h'
+    <;> intros <;> injections <;> try trivial
+    case conv hc' _ _ _ ih' hΓ' he' => subst hΓ' he'; exact .trans (ih' rfl rfl) hc'
+    case lam he' _ _ hΓ' ht₁' he''  => subst hΓ' ht₁' he''; exact pi_defeq_aux .refl (ihe he')
+  case pi Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂ t' h' =>
+    generalize hx : pi t₁ t₂ = x; rw [hx] at h'; replace hx := hx.symm
+    apply @HasType.recOn
+      (fun _ _        => True)
+      (fun Γ' e' t' _ => (Γ = Γ') → (e' = pi t₁ t₂) → sort (max s₁ s₂) ~~ t')
+      _ _ _ h'
+    <;> intros <;> injections <;> try trivial
+    case conv hc' _ _ _ ih' hΓ' he'       => subst hΓ' he'; exact .trans (ih' rfl rfl) hc'
+    case pi ht₁' ht₂' _ _ hΓ' ht₁'' ht₂'' =>
+      subst hΓ' ht₁'' ht₂''
       rw [eq_of_sort_defeq (iht₁ ht₁'), eq_of_sort_defeq (iht₂ ht₂')]
+      exact .refl
 
 /- Auxiliary functions and related lemmas. -/
 
-def ctx_shift : ctx → Nat → ctx
-| []       _ := []
-| (t :: Γ) n := (t ⟦Γ.length ↟ n⟧) :: ctx_shift Γ n
+def Ctx.shift : Ctx → Nat → Ctx
+  | [],     _ => []
+  | t :: Γ, n => (t ⟦Γ.length ↟ n⟧) :: Ctx.shift Γ n
 
-def ctx_subst : ctx → Expr → ctx
-| []       _ := []
-| (t :: Γ) e := (t ⟦Γ.length ↦ e⟧) :: ctx_subst Γ e
+def Ctx.subst : Ctx → Expr → Ctx
+  | [],     _ => []
+  | t :: Γ, e => (t ⟦Γ.length ↦ e⟧) :: Ctx.subst Γ e
 
-scoped notation `∥`:79 Γ:79 `∥`:79       := list.length Γ
-scoped notation Γ ` ⟦↦↦ `:80 e:79 `⟧`:79 := ctx_subst Γ e
-scoped notation Γ ` ⟦↟↟ `:80 n:79 `⟧`:79 := ctx_shift Γ n
+scoped notation "∥" Γ:79 "∥"       => List.length Γ
+scoped notation Γ " ⟦↦↦ " e:79 "⟧" => Ctx.subst Γ e
+scoped notation Γ " ⟦↟↟ " n:79 "⟧" => Ctx.shift Γ n
 
 theorem ctx_shift_length (Γ e) : ∥Γ ⟦↟↟ e⟧∥ = ∥Γ∥ := by
-  induction Γ with t Γ ih
-    unfold ctx_shift
-    unfold ctx_shift list.length at *, rw ih
+  induction Γ
+  . dsimp only [Ctx.shift]
+  . dsimp only [Ctx.shift, List.length] at *; rename_i ih; rw [ih]
 
-theorem ctx_shift_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = ∥Γ∥) (k) :
-  list.nth (Γ ⟦↟↟ k⟧) n = option.some (e ⟦m ↟ k⟧) := by
-  induction Γ with t Γ ih generalizing n
-    unfold list.nth at h, injection h
-    unfold ctx_shift at ih ⊢
-    cases n with n
-      unfold list.nth list.length at *, injection h with h
-      rw [Nat.one_add, Nat.add_one] at h', injection h' with h'
+theorem ctx_shift_nth {Γ n e} (h : List.get? Γ n = some e) {m} (h' : n.succ + m = ∥Γ∥) (k) :
+  List.get? (Γ ⟦↟↟ k⟧) n = some (e ⟦m ↟ k⟧) := by
+  induction Γ generalizing n
+  . dsimp only [List.get?] at h; injection h
+  . dsimp only [Ctx.shift] at *
+    rename_i t Γ ih
+    cases n
+    . dsimp only [List.get?, List.length] at *; injection h with h
+      rw [Nat.one_add, Nat.add_one] at h'; injection h' with h'
       rw [h, h']
-      unfold list.nth list.length at *
-      rw [Nat.add_one, Nat.succ_add] at h', injection h' with h'
+    . dsimp only [List.get?, List.length] at *
+      rw [Nat.add_one, Nat.succ_add] at h'; injection h' with h'
       exact ih h h'
 
 theorem ctx_subst_length (Γ e) : ∥Γ ⟦↦↦ e⟧∥ = ∥Γ∥ := by
-  induction Γ with t Γ ih
-    unfold ctx_subst
-    unfold ctx_subst list.length at *, rw ih
+  induction Γ
+  . dsimp only [Ctx.subst]
+  . dsimp only [Ctx.subst, List.length] at *; rename_i ih; rw [ih]
 
-theorem ctx_subst_nth {Γ n e} (h : list.nth Γ n = option.some e) {m} (h' : n.succ + m = ∥Γ∥) (e') :
-  list.nth (Γ ⟦↦↦ e'⟧) n = option.some (e ⟦m ↦ e'⟧) := by
-  induction Γ with t Γ ih generalizing n
-    unfold list.nth at h, injection h
-    unfold ctx_subst at ih ⊢
-    cases n with n
-      unfold list.nth list.length at *, injection h with h
-      rw [Nat.one_add, Nat.add_one] at h', injection h' with h'
+theorem ctx_subst_nth {Γ n e} (h : List.get? Γ n = some e) {m} (h' : n.succ + m = ∥Γ∥) (e') :
+  List.get? (Γ ⟦↦↦ e'⟧) n = some (e ⟦m ↦ e'⟧) := by
+  induction Γ generalizing n e
+  . dsimp only [List.get?] at h; injection h
+  . dsimp only [Ctx.subst] at *
+    rename_i t Γ ih
+    cases n
+    . dsimp only [List.get?, List.length] at *; injection h with h
+      rw [Nat.one_add, Nat.add_one] at h'; injection h' with h'
       rw [h, h']
-      unfold list.nth list.length at *
-      rw [Nat.add_one, Nat.succ_add] at h', injection h' with h'
+    . dsimp only [List.get?, List.length] at *
+      rw [Nat.add_one, Nat.succ_add] at h'; injection h' with h'
       exact ih h h'
 
 /- How typing interacts with shifting. -/
 
-/-- Lean 3 does not have good specialised support for mutually inductive types.
-    To carry out proofs using mutual induction, we have to define both motives beforehand. -/
-def judgment_shift_ind_type : judgment_index → Prop
-| (well_ctx Γ₀)     := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), ▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ
-| (has_type Γ₀ e t) := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ ▷ e ⟦∥Γ'∥ ↟ ∥Δ∥⟧ : t ⟦∥Γ'∥ ↟ ∥Δ∥⟧
+-- def judgment_shift_ind_type : judgment_index → Prop
+-- | (WellCtx Γ₀)     := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), ▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ
+-- | (HasType Γ₀ e t) := ∀ {Γ' Γ} (h₀ : Γ₀ = Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ), Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ ▷ e ⟦∥Γ'∥ ↟ ∥Δ∥⟧ : t ⟦∥Γ'∥ ↟ ∥Δ∥⟧
 
-/-- The mutual induction proof itself. -/
-theorem judgment_shift_ind {i : judgment_index} (h : judgment i) : judgment_shift_ind_type i := by
+/-
+theorem judgment_shift_ind {i : judgment_index} (h : Judgment i) : judgment_shift_ind_type i := by
   induction h
   case c_nil
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw
-    rw list.nil_eq_append_iff at h₀
+    rw List.nil_eq_append_iff at h₀
     rw h₀.1 at ⊢, rw h₀.2 at hw ⊢
     exact hw
   case c_cons : Γ₀ t s ht iht
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw
     cases Γ' with t' Γ' ih'
-      unfold ctx_shift, exact hw
-      rw list.cons_append at h₀, injection h₀ with h₁ h₂
+      unfold Ctx.shift, exact hw
+      rw List.cons_append at h₀, injection h₀ with h₁ h₂
       rw ← h₁ at h₀ ⊢, clear h₁ t'
       rw h₂ at ht iht, clear h₂ h₀ Γ₀
       specialize iht rfl hw, unfold shift at iht
-      unfold ctx_shift
+      unfold Ctx.shift
       exact c_cons iht
   case t_conv : Γ₀ e t t' s hc ht he iht ihe
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀
@@ -1020,8 +1055,8 @@ theorem judgment_shift_ind {i : judgment_index} (h : judgment i) : judgment_shif
       rw hm at this, rw ← this, clear this
       refine t_var ih _
       have h₂ := h₁, rw ← @ctx_shift_length Γ' ∥Δ∥ at h₂
-      rw [list.append_assoc, list.nth_aux_1 _ _ _ h₂]
-      rw list.nth_aux_1 _ _ _ h₁ at ht
+      rw [List.append_assoc, List.get?_aux_1 _ _ _ h₂]
+      rw List.get?_aux_1 _ _ _ h₁ at ht
       exact ctx_shift_nth ht hm _
       rw shift_le h₁
       obtain ⟨m, hm⟩ := Nat.le.dest h₁
@@ -1029,8 +1064,8 @@ theorem judgment_shift_ind {i : judgment_index} (h : judgment i) : judgment_shif
       rw [Nat.add_succ, hm] at this, rw [this, Nat.succ_add], clear this
       refine t_var ih _
       have h₂ := hm, rw ← @ctx_shift_length Γ' ∥Δ∥ at h₂
-      rw [← h₂, list.append_assoc, Nat.add_assoc, list.nth_aux_2, Nat.add_comm, list.nth_aux_2]
-      rw [← hm, list.nth_aux_2] at ht
+      rw [← h₂, List.append_assoc, Nat.add_assoc, List.get?_aux_2, Nat.add_comm, List.get?_aux_2]
+      rw [← hm, List.get?_aux_2] at ht
       exact ht
   case t_app : Γ₀ l r t₁ t₂ hl hr ihl ihr
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀
@@ -1043,19 +1078,19 @@ theorem judgment_shift_ind {i : judgment_index} (h : judgment i) : judgment_shif
   case t_lam : Γ₀ t₁ t₂ s e hs he iht ihe
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀
     specialize iht rfl hw
-    rw ← list.cons_append at he ihe
-    specialize ihe rfl hw, unfold ctx_shift at ihe
+    rw ← List.cons_append at he ihe
+    specialize ihe rfl hw, unfold Ctx.shift at ihe
     unfold shift at *
     exact t_lam iht ihe
   case t_pi : Γ₀ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
     unfold judgment_shift_ind_type at *, intros Γ' Γ h₀ Δ hw, rw h₀ at *, clear h₀ Γ₀
     specialize iht₁ rfl hw
-    rw ← list.cons_append at ht₂ iht₂
-    specialize iht₂ rfl hw, unfold ctx_shift at iht₂
+    rw ← List.cons_append at ht₂ iht₂
+    specialize iht₂ rfl hw, unfold Ctx.shift at iht₂
     unfold shift at *
     exact t_pi iht₁ iht₂
 
-theorem well_ctx_shift_ind {Γ' Γ} (h : ▷ Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ) :
+theorem WellCtx_shift_ind {Γ' Γ} (h : ▷ Γ' ++ Γ) {Δ} (hw : ▷ Δ ++ Γ) :
   (▷ Γ' ⟦↟↟ ∥Δ∥⟧ ++ Δ ++ Γ) :=
     judgment_shift_ind h rfl hw
 
@@ -1065,10 +1100,10 @@ theorem has_type_shift_ind {Γ' Γ e t} (h : Γ' ++ Γ ▷ e : t) {Δ} (hw : ▷
 
 theorem has_type_shift {Γ e t} (h : Γ ▷ e : t) {Δ} (hw : ▷ Δ ++ Γ) :
   (Δ ++ Γ ▷ e ⟦0 ↟ ∥Δ∥⟧ : t ⟦0 ↟ ∥Δ∥⟧) := by
-  rw ← list.nil_append Γ at h
+  rw ← List.nil_append Γ at h
   have := has_type_shift_ind h hw
-  unfold ctx_shift list.length at this
-  rw list.nil_append at this
+  unfold Ctx.shift List.length at this
+  rw List.nil_append at this
   exact this
 
 /- How typing interacts with substitution. -/
@@ -1076,24 +1111,24 @@ theorem has_type_shift {Γ e t} (h : Γ ▷ e : t) {Δ} (hw : ▷ Δ ++ Γ) :
 /-- Lean 3 does not have good specialised support for mutually inductive types.
     To carry out proofs using mutual induction, we have to define both motives beforehand. -/
 def judgment_subst_ind_type : judgment_index → Prop
-| (well_ctx Γ₀)      := ∀ {Γ t Δ} (h₀ : Γ₀ = Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t), ▷ Γ ⟦↦↦ r⟧ ++ Δ
-| (has_type Γ₀ l t₂) := ∀ {Γ t₁ Δ} (h₀ : Γ₀ = Γ ++ t₁ :: Δ) {r} (hr : Δ ▷ r : t₁), Γ ⟦↦↦ r⟧ ++ Δ ▷ l ⟦∥Γ∥ ↦ r⟧ : t₂ ⟦∥Γ∥ ↦ r⟧
+| (WellCtx Γ₀)      := ∀ {Γ t Δ} (h₀ : Γ₀ = Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t), ▷ Γ ⟦↦↦ r⟧ ++ Δ
+| (HasType Γ₀ l t₂) := ∀ {Γ t₁ Δ} (h₀ : Γ₀ = Γ ++ t₁ :: Δ) {r} (hr : Δ ▷ r : t₁), Γ ⟦↦↦ r⟧ ++ Δ ▷ l ⟦∥Γ∥ ↦ r⟧ : t₂ ⟦∥Γ∥ ↦ r⟧
 
 /-- The mutual induction proof itself. -/
-theorem judgment_subst_ind {i : judgment_index} (h : judgment i) : judgment_subst_ind_type i := by
+theorem judgment_subst_ind {i : judgment_index} (h : Judgment i) : judgment_subst_ind_type i := by
   induction h
   case c_nil
     unfold judgment_subst_ind_type at *, intros Γ t Δ h₀ r hr
-    rw list.nil_eq_append_iff at h₀, injection h₀.2
+    rw List.nil_eq_append_iff at h₀, injection h₀.2
   case c_cons : Γ₀ t s ht iht
     unfold judgment_subst_ind_type at *, intros Γ t' Δ h₀ r hr
     cases Γ with t'' Γ ih'
-      unfold ctx_subst, exact well_ctx_of_has_type hr
-      rw list.cons_append at h₀, injection h₀ with h₁ h₂
+      unfold Ctx.subst, exact WellCtx_of_has_type hr
+      rw List.cons_append at h₀, injection h₀ with h₁ h₂
       rw ← h₁ at h₀ ⊢, clear h₁ t''
       rw h₂ at ht iht, clear h₂ h₀ Γ₀
       specialize iht rfl hr, unfold subst at iht
-      unfold ctx_subst
+      unfold Ctx.subst
       exact c_cons iht
   case t_conv : Γ₀ e t t' s hc ht he iht ihe
     unfold judgment_subst_ind_type at *, intros Γ t₁ Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀
@@ -1115,21 +1150,21 @@ theorem judgment_subst_ind {i : judgment_index} (h : judgment i) : judgment_subs
       rw [this, Nat.pred_succ], clear this
       refine t_var ih _
       have := hm, rw [← @ctx_subst_length Γ r] at this
-      rw [← this, list.nth_aux_2], clear this
-      rw [← hm, ← Nat.add_succ, list.nth_aux_2] at ht
+      rw [← this, List.get?_aux_2], clear this
+      rw [← hm, ← Nat.add_succ, List.get?_aux_2] at ht
       exact ht
       have := @shift_subst_inside t r n 0, rw [Nat.add_zero] at this
       rw [h₁, subst_eq, this], clear this
-      rw [← h₁, list.nth_aux_4] at ht, injection ht with ht, rw ht at hr
+      rw [← h₁, List.get?_aux_4] at ht, injection ht with ht, rw ht at hr
       have := has_type_shift hr ih, rw [ctx_subst_length, h₁] at this
       exact this
       rw [subst_gt h₁]
       obtain ⟨m, hm⟩ := Nat.le.dest (Nat.succ_le_of_lt h₁)
       rw [← hm, shift_subst_above]
       refine t_var ih _
-      rw [list.nth_aux_3 _ _ _ _ h₁] at ht
+      rw [List.get?_aux_3 _ _ _ _ h₁] at ht
       rw [← @ctx_subst_length Γ r] at h₁
-      rw [list.nth_aux_1 _ _ _ h₁]
+      rw [List.get?_aux_1 _ _ _ h₁]
       exact ctx_subst_nth ht hm _
   case t_app : Γ₀ l r t₁ t₂ hl hr ihl ihr
     unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r' hr', rw h₀ at *, clear h₀ Γ₀
@@ -1140,19 +1175,19 @@ theorem judgment_subst_ind {i : judgment_index} (h : judgment i) : judgment_subs
   case t_lam : Γ₀ t₁ t₂ s e hs he iht ihe
     unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀
     specialize iht rfl hr
-    rw ← list.cons_append at he ihe
-    specialize ihe rfl hr, unfold ctx_subst at ihe
+    rw ← List.cons_append at he ihe
+    specialize ihe rfl hr, unfold Ctx.subst at ihe
     unfold subst at iht ⊢
     exact t_lam iht ihe
   case t_pi : Γ₀ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂
     unfold judgment_subst_ind_type at *, intros Γ t₁' Δ h₀ r hr, rw h₀ at *, clear h₀ Γ₀
     specialize iht₁ rfl hr
-    rw ← list.cons_append at ht₂ iht₂
-    specialize iht₂ rfl hr, unfold ctx_subst at iht₂
+    rw ← List.cons_append at ht₂ iht₂
+    specialize iht₂ rfl hr, unfold Ctx.subst at iht₂
     unfold subst at iht₁ iht₂ ⊢
     exact t_pi iht₁ iht₂
 
-theorem well_ctx_subst_ind {Γ t Δ} (h : ▷ Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t) :
+theorem WellCtx_subst_ind {Γ t Δ} (h : ▷ Γ ++ t :: Δ) {r} (hr : Δ ▷ r : t) :
   (▷ Γ ⟦↦↦ r⟧ ++ Δ) :=
     judgment_subst_ind h rfl hr
 
@@ -1162,10 +1197,10 @@ theorem has_type_subst_ind {Γ t₁ Δ l t₂} (h : Γ ++ t₁ :: Δ ▷ l : t�
 
 theorem has_type_subst {t₁ Γ l t₂} (h : t₁ :: Γ ▷ l : t₂) {r} (hr : Γ ▷ r : t₁) :
   (Γ ▷ l ⟦0 ↦ r⟧ : t₂ ⟦0 ↦ r⟧) := by
-  rw ← list.nil_append (t₁ :: Γ) at h
+  rw ← List.nil_append (t₁ :: Γ) at h
   have := has_type_subst_ind h hr
-  unfold ctx_subst at this
-  rw list.nil_append at this
+  unfold Ctx.subst at this
+  rw List.nil_append at this
   exact this
 
 /-- The weakening rule. -/
@@ -1174,7 +1209,7 @@ theorem has_type_of_ctx_cons {Γ e t} (h : Γ ▷ e : t) {t' s} (ht : Γ ▷ t' 
     @has_type_shift _ _ _ h [t'] (c_cons ht)
 
 /-- Every entry in a well-formed context has type `sort n`. -/
-theorem has_sort_of_well_ctx_nth {Γ} (hw : ▷ Γ) {n t} (h : list.nth Γ n = option.some t) :
+theorem has_sort_of_WellCtx_nth {Γ} (hw : ▷ Γ) {n t} (h : List.get? Γ n = some t) :
   ∃ s, (Γ ▷ t ⟦0 ↟ n.succ⟧ : sort s) := by
   induction Γ with t' Γ ih generalizing n
     injection h
@@ -1183,16 +1218,16 @@ theorem has_sort_of_well_ctx_nth {Γ} (hw : ▷ Γ) {n t} (h : list.nth Γ n = o
       rcases hw with _ | @⟨Γ, t, s, ht⟩ | _
       have := has_type_of_ctx_cons ht ht, unfold shift at this
       exact ⟨s, this⟩
-      unfold list.nth at h
+      unfold List.get? at h
       rcases hw with _ | @⟨Γ, t, s, ht⟩ | _
-      specialize ih (well_ctx_of_has_type ht) h
+      specialize ih (WellCtx_of_has_type ht) h
       rcases ih with ⟨s, hs⟩
       have := has_type_of_ctx_cons hs ht, unfold shift at this
       have h' := shift_shift_overlap t 0 n.succ 1, rw zero_add at h', rw h' at this
       exact ⟨s, this⟩
 
 /-- Auxiliary proposition for proving the classification lemma. -/
-def has_sort_aux_type : ctx → Expr → Prop
+def has_sort_aux_type : Ctx → Expr → Prop
 | Γ (sort s)   := (∃ s', Γ ▷ sort s : sort s')
 | Γ (var v)    := (∃ s, Γ ▷ var v : sort s)
 | Γ (app l r)  := (∃ s, Γ ▷ app l r : sort s)
@@ -1233,23 +1268,23 @@ theorem type_has_sort {Γ e t} (h : Γ ▷ e : t) : ∃ s, (Γ ▷ t : sort s) :
   induction h
   case t_conv : Γ e t t' s hc ht he iht ihe   exact ⟨s, ht⟩
   case t_sort : Γ n hw ih   exact ⟨_, t_sort hw⟩
-  case t_var : Γ n t hw ht ih   exact has_sort_of_well_ctx_nth hw ht
+  case t_var : Γ n t hw ht ih   exact has_sort_of_WellCtx_nth hw ht
   case t_app : Γ l r t₁ t₂ hl hr ihl ihr
     obtain ⟨s, hs⟩ := has_sort_aux_elim (has_sort_aux ihl).2.2
     have := has_type_subst hs hr, unfold subst at this
     exact ⟨s, this⟩
   case t_lam : Γ t₁ t₂ s e hs he iht ihe   exact ⟨s, hs⟩
-  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂   exact ⟨_, t_sort (well_ctx_of_has_type ht₁)⟩
+  case t_pi : Γ t₁ s₁ t₂ s₂ ht₁ ht₂ iht₁ iht₂   exact ⟨_, t_sort (WellCtx_of_has_type ht₁)⟩
 
 /-- As a consequence, every well-formed term is either:
     (1) a sort
     (2) a type that is not a sort
     (3) a term that is not a type. -/
-def is_sort (Γ : ctx) (e : Expr) : Prop := ∃ s, e = sort s
-def is_type (Γ : ctx) (e : Expr) : Prop := ∃ s, Γ ▷ e : sort s
-def is_term (Γ : ctx) (e : Expr) : Prop := ∃ t, Γ ▷ e : t ∧ ∃ s, Γ ▷ t : sort s
+def is_sort (Γ : Ctx) (e : Expr) : Prop := ∃ s, e = sort s
+def is_type (Γ : Ctx) (e : Expr) : Prop := ∃ s, Γ ▷ e : sort s
+def is_term (Γ : Ctx) (e : Expr) : Prop := ∃ t, Γ ▷ e : t ∧ ∃ s, Γ ▷ t : sort s
 
-/- Auxiliary typing judgment lemmas. -/
+/- Auxiliary typing Judgment lemmas. -/
 
 theorem app_has_type_aux {Γ l r t} (h : Γ ▷ app l r : t) :
   ∃ t₁ t₂, (Γ ▷ l : pi t₁ t₂) ∧ (Γ ▷ r : t₁) ∧ (t ~~ t₂ ⟦0 ↦ r⟧) := by
@@ -1279,7 +1314,7 @@ theorem pi_has_type_aux {Γ t₁ t₂ t} (h : Γ ▷ pi t₁ t₂ : t) :
     exact ⟨s₁, s₂, ht₁, ht₂, .refl⟩
 
 /-- Auxiliary relation for proving the type preservation lemma. -/
-inductive derived_ctx : ctx → ctx → Prop
+inductive derived_ctx : Ctx → Ctx → Prop
 | dc_nil                :                                                    derived_ctx [] []
 | dc_cons {t t' Γ Γ' s} : (t ~~ t') → (Γ' ▷ t : sort s) → derived_ctx Γ Γ' → derived_ctx (t :: Γ) (t' :: Γ')
 open derived_ctx
@@ -1291,7 +1326,7 @@ theorem derived_ctx_self {Γ} (hw : ▷ Γ) : Γ ~~dc Γ := by
   induction Γ with t Γ ih
     exact dc_nil
     rcases hw with _ | @⟨Γ, t, s, ht⟩
-    exact dc_cons .refl ht (ih (well_ctx_of_has_type ht))
+    exact dc_cons .refl ht (ih (WellCtx_of_has_type ht))
 
 /-- A term has the same type under derived contexts. -/
 theorem has_type_of_derived_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ') (hc : Γ ~~dc Γ') : (Γ' ▷ e : t) := by
@@ -1313,8 +1348,8 @@ theorem has_type_of_derived_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ')
         have := has_type_of_ctx_cons hx hu', unfold shift at this
         refine t_conv (Defeq.shift (.symm hc) _) this _, clear this
         exact t_var (c_cons hu') rfl
-        unfold list.nth at ht
-        specialize ih (well_ctx_of_has_type hu') (well_ctx_of_has_type hu) ht
+        unfold List.get? at ht
+        specialize ih (WellCtx_of_has_type hu') (WellCtx_of_has_type hu) ht
         have h := has_type_of_ctx_cons ih hu'
         rw [shift_le (Nat.zero_le _)] at h
         have := shift_shift_overlap t 0 n.succ 1, rw Nat.zero_add at this, rw this at h, clear this
@@ -1335,8 +1370,8 @@ theorem has_type_of_derived_ctx {Γ e t} (h : Γ ▷ e : t) {Γ'} (hw : ▷ Γ')
 theorem has_type_of_derived_ctx_aux {u Γ e t}
   (h : u :: Γ ▷ e : t) {u'} (hc : u ~~ u') {s} (h' : Γ ▷ u' : sort s) :
   (u' :: Γ ▷ e : t) := by
-  rcases (well_ctx_of_has_type h) with _ | @⟨Γ, u, s', hu⟩
-  have := dc_cons hc hu (derived_ctx_self (well_ctx_of_has_type h'))
+  rcases (WellCtx_of_has_type h) with _ | @⟨Γ, u, s', hu⟩
+  have := dc_cons hc hu (derived_ctx_self (WellCtx_of_has_type h'))
   exact has_type_of_derived_ctx h (c_cons h') this
 
 /-- Small-step reduction preserves type. -/
@@ -1408,8 +1443,6 @@ theorem has_type_conv_SmallStar.{Γ e t} (h : Γ ▷ e : t) {t'} (h' : t ~>* t')
 
 -/
 
-end
 end Expr
 
-end
 end Coc

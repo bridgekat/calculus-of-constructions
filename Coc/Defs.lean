@@ -1,10 +1,9 @@
 import Lean.Meta
 
 namespace Coc
-section
 
 /-- Expressions (preterms) -/
-inductive Expr : Type
+inductive Expr where
   | sort : Nat →         Expr
   | var  : Nat →         Expr
   | app  : Expr → Expr → Expr
@@ -59,7 +58,7 @@ def Expr.subst : Expr → Nat → Expr → Expr
   | pi t₁ t₂, n, e' => .pi (Expr.subst t₁ n e') (Expr.subst t₂ (Nat.succ n) e')
 
 /-- Small-step reduction rules. -/
-inductive Small : Expr → Expr → Prop
+inductive Small : (Expr → Expr → Prop) where
   | beta     {t e r}     : Small (.app (.lam t e) r) (Expr.subst e 0 r)
   | appLeft  {l l' r}    : Small l l' →   Small (.app l r) (.app l' r)
   | appRight {l r r'}    : Small r r' →   Small (.app l r) (.app l r')
@@ -69,12 +68,12 @@ inductive Small : Expr → Expr → Prop
   | piRight  {t₁ t₂ t₂'} : Small t₂ t₂' → Small (.pi t₁ t₂) (.pi t₁ t₂')
 
 /-- Transitive closure of small-step reduction rules. -/
-inductive SmallStar : Expr → Expr → Prop
+inductive SmallStar : (Expr → Expr → Prop) where
   | refl {e}        :                                 SmallStar e e
   | step {e₁ e₂ e₃} : SmallStar e₁ e₂ → Small e₂ e₃ → SmallStar e₁ e₃
 
 /-- Symmetric transitive closure of small-step reduction rules. -/
-inductive Defeq : Expr → Expr → Prop
+inductive Defeq : (Expr → Expr → Prop) where
   | refl  {e}        :                             Defeq e e
   | step  {e₁ e₂}    : Small e₁ e₂ →               Defeq e₁ e₂
   | symm  {e₁ e₂}    : Defeq e₁ e₂ →               Defeq e₂ e₁
@@ -87,48 +86,10 @@ instance : ToString Ctx := ⟨List.toString⟩
 instance : Repr Ctx := ⟨List.repr⟩
 instance : Append Ctx := ⟨List.append⟩
 
-/-- Lean 3 does not have good specialised support for mutually inductive types. -/
-inductive JudgmentIndex : Type
-  | wellCtx : Ctx →               JudgmentIndex
-  | hasType : Ctx → Expr → Expr → JudgmentIndex
-deriving DecidableEq
-
-/-- Typing rules. -/
-inductive Judgment : JudgmentIndex → Prop
-  | nil :
-    Judgment (.wellCtx [])
-  | cons {Γ t s} :
-    Judgment (.hasType Γ t (.sort s)) →
-    Judgment (.wellCtx (t :: Γ))
-  | conv {Γ e t t' s} :
-    Defeq t t' →
-    Judgment (.hasType Γ t' (.sort s)) →
-    Judgment (.hasType Γ e t) →
-    Judgment (.hasType Γ e t')
-  | sort {Γ n} :
-    Judgment (.wellCtx Γ) →
-    Judgment (.hasType Γ (.sort n) (.sort (Nat.succ n)))
-  | var {Γ n t} :
-    Judgment (.wellCtx Γ) →
-    List.get? Γ n = some t →
-    Judgment (.hasType Γ (.var n) (Expr.shift t 0 (Nat.succ n)))
-  | app {Γ l r t₁ t₂} :
-    Judgment (.hasType Γ l (.pi t₁ t₂)) →
-    Judgment (.hasType Γ r t₁) →
-    Judgment (.hasType Γ (.app l r) (Expr.subst t₂ 0 r))
-  | lam {Γ t₁ t₂ s e} :
-    Judgment (.hasType Γ (.pi t₁ t₂) (.sort s)) →
-    Judgment (.hasType (t₁ :: Γ) e t₂) →
-    Judgment (.hasType Γ (.lam t₁ e) (.pi t₁ t₂))
-  | pi {Γ t₁ s₁ t₂ s₂} :
-    Judgment (.hasType Γ t₁ (.sort s₁)) →
-    Judgment (.hasType (t₁ :: Γ) t₂ (.sort s₂)) →
-    Judgment (.hasType Γ (.pi t₁ t₂) (.sort (max s₁ s₂)))
-
 mutual
 
 /-- Typing rules. -/
-inductive WellCtx : Ctx → Prop
+inductive WellCtx : (Ctx → Prop) where
   | nil :
     WellCtx []
   | cons {Γ t s} :
@@ -136,7 +97,7 @@ inductive WellCtx : Ctx → Prop
     WellCtx (t :: Γ)
 
 /-- Typing rules. -/
-inductive HasType : Ctx → Expr → Expr → Prop
+inductive HasType : (Ctx → Expr → Expr → Prop) where
   | conv {Γ e t t' s} :
     Defeq t t' →
     HasType Γ t' (.sort s) →
@@ -168,5 +129,4 @@ end
 #eval Lean.Meta.getEqnsFor? ``Expr.shift
 #eval Lean.Meta.getEqnsFor? ``Expr.subst
 
-end
 end Coc
